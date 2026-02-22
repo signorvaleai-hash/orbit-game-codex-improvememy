@@ -24,6 +24,9 @@ Defaults:
 - `GET /health`
 - `POST /v1/profile/register`
   - body: `{ profileId?, name, deviceId }`
+- `POST /v1/visit`
+  - body: `{ deviceId }`
+- `GET /v1/stats/public`
 - `POST /v1/consent`
   - body: `{ profileId, analyticsAllowed, crashAllowed }`
 - `POST /v1/runs/start`
@@ -39,6 +42,7 @@ Defaults:
 Notes:
 - leaderboard top is per-player best score (one row per real profile)
 - leaderboard profile endpoint returns `{ bestScore, bestSurvival, rank, size }`
+- public stats endpoint returns aggregate numbers: visitors, players, runs, highest score, top player
 
 ## Anti-cheat model
 

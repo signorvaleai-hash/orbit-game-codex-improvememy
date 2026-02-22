@@ -81,6 +81,13 @@ CREATE TABLE IF NOT EXISTS crash_events (
   created_at INTEGER NOT NULL,
   FOREIGN KEY(profile_id) REFERENCES profiles(id)
 );
+
+CREATE TABLE IF NOT EXISTS visitors (
+  device_id TEXT PRIMARY KEY,
+  first_seen_at INTEGER NOT NULL,
+  last_seen_at INTEGER NOT NULL,
+  session_count INTEGER NOT NULL DEFAULT 1
+);
 `);
 
 const query = {
@@ -131,7 +138,27 @@ const query = {
   consentByProfile: db.prepare(`SELECT * FROM consent WHERE profile_id = ?`),
   insertAnalytics: db.prepare(`INSERT INTO analytics_events (id, profile_id, event_name, payload_json, created_at) VALUES (?, ?, ?, ?, ?)`),
   insertCrash: db.prepare(`INSERT INTO crash_events (id, profile_id, message, stack, app_version, created_at) VALUES (?, ?, ?, ?, ?, ?)`),
-  profileSummary: db.prepare(`SELECT id, name, total_runs, best_score, best_survival, created_at, last_seen_at FROM profiles WHERE id = ?`)
+  profileSummary: db.prepare(`SELECT id, name, total_runs, best_score, best_survival, created_at, last_seen_at FROM profiles WHERE id = ?`),
+  upsertVisitor: db.prepare(`
+    INSERT INTO visitors (device_id, first_seen_at, last_seen_at, session_count)
+    VALUES (?, ?, ?, 1)
+    ON CONFLICT(device_id) DO UPDATE SET
+      last_seen_at = excluded.last_seen_at,
+      session_count = visitors.session_count + 1
+  `),
+  visitorsTotal: db.prepare(`SELECT COUNT(*) AS count FROM visitors`),
+  visitorsActiveSince: db.prepare(`SELECT COUNT(*) AS count FROM visitors WHERE last_seen_at >= ?`),
+  playersTotal: db.prepare(`SELECT COUNT(*) AS count FROM profiles`),
+  runsTotal: db.prepare(`SELECT COUNT(*) AS count FROM runs`),
+  runsSince: db.prepare(`SELECT COUNT(*) AS count FROM runs WHERE submitted_at >= ?`),
+  highestScore: db.prepare(`SELECT COALESCE(MAX(authoritative_score), 0) AS score FROM runs`),
+  topRun: db.prepare(`
+    SELECT p.name AS player_name, r.authoritative_score AS score
+    FROM runs r
+    JOIN profiles p ON p.id = r.profile_id
+    ORDER BY r.authoritative_score DESC, r.submitted_at ASC
+    LIMIT 1
+  `)
 };
 
 function nowMs() {
@@ -278,6 +305,39 @@ function route(req, res) {
         return json(res, 201, { profileId, name: cleanName, existing: false });
       })
       .catch((error) => json(res, 400, { error: error.message }));
+  }
+
+  if (pathname === '/v1/visit' && req.method === 'POST') {
+    return parseJsonBody(req)
+      .then((body) => {
+        const deviceId = String(body.deviceId || '').slice(0, 128).trim();
+        if (!deviceId) return json(res, 400, { error: 'device_id_required' });
+        const ts = nowMs();
+        query.upsertVisitor.run(deviceId, ts, ts);
+        return json(res, 202, { ok: true });
+      })
+      .catch((error) => json(res, 400, { error: error.message }));
+  }
+
+  if (pathname === '/v1/stats/public' && req.method === 'GET') {
+    const now = nowMs();
+    const since24h = now - 24 * 60 * 60 * 1000;
+    const visitors = query.visitorsTotal.get();
+    const visitorsToday = query.visitorsActiveSince.get(since24h);
+    const players = query.playersTotal.get();
+    const runs = query.runsTotal.get();
+    const runsToday = query.runsSince.get(since24h);
+    const highest = query.highestScore.get();
+    const top = query.topRun.get();
+    return json(res, 200, {
+      visitors: Number(visitors ? visitors.count : 0),
+      visitorsToday: Number(visitorsToday ? visitorsToday.count : 0),
+      players: Number(players ? players.count : 0),
+      totalRuns: Number(runs ? runs.count : 0),
+      runsToday: Number(runsToday ? runsToday.count : 0),
+      highestScore: Number(highest ? highest.score : 0),
+      topPlayer: top ? String(top.player_name || 'No one yet') : 'No one yet'
+    });
   }
 
   if (pathname === '/v1/runs/start' && req.method === 'POST') {

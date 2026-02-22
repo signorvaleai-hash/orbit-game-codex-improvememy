@@ -316,6 +316,60 @@
             box-shadow: 0 0 25px rgba(100, 200, 255, 0.3);
         }
 
+        .btn.locked {
+            opacity: 0.72;
+            box-shadow: 0 0 10px rgba(100, 200, 255, 0.18);
+        }
+
+        .setup-guide {
+            width: 100%;
+            max-width: 320px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(100, 200, 255, 0.28);
+            border-radius: 10px;
+            background: rgba(100, 200, 255, 0.08);
+            padding: 10px 12px;
+        }
+
+        .setup-guide-title {
+            color: #bfe8ff;
+            font-size: 11px;
+            text-align: center;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .setup-step {
+            font-size: 11px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+            text-align: left;
+        }
+
+        .setup-step.pending { color: #ffd36a; }
+        .setup-step.done { color: #9bf0b6; }
+
+        .setup-hint {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid rgba(100, 200, 255, 0.2);
+            color: #d7f1ff;
+            font-size: 10px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .focus-pulse {
+            animation: guidePulse 1s ease-in-out infinite;
+            box-shadow: 0 0 0 2px rgba(255, 211, 106, 0.35), 0 0 16px rgba(255, 211, 106, 0.2);
+            border-radius: 10px;
+        }
+
+        @keyframes guidePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.015); }
+        }
+
         #finalScore, #victoryScore {
             font-size: 18px;
             color: #fff;
@@ -455,15 +509,43 @@
     <div id="startScreen">
         <div class="title">ORBITAL DEFENSE</div>
         <div class="subtitle">Save 3 planets from the debris field</div>
+        <div id="setupGuide" class="setup-guide">
+            <div id="setupGuideTitle" class="setup-guide-title">Quick Setup: 2 Steps</div>
+            <div id="setupStepName" class="setup-step pending">1. Type your pilot name</div>
+            <div id="setupStepPrivacy" class="setup-step pending">2. Tap "Save Privacy Choice"</div>
+            <div id="setupHint" class="setup-hint">Tip: do Step 1 first, then Step 2. After that, tap START.</div>
+        </div>
         <div id="welcomeLine" style="color: #9ed9ff; font-size: 13px; margin-bottom: 8px;">Pilot profile required</div>
         <div id="nameSetup" style="display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 280px; margin-bottom: 12px;">
             <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter pilot name" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(100,200,255,0.35); background: rgba(0,0,0,0.35); color: #fff; text-align: center; font-size: 13px;">
-            <div id="nameRequirementLine" style="color: rgba(255,255,255,0.6); font-size: 10px; text-align: center;">Your name is saved on this device.</div>
+            <div id="nameRequirementLine" style="color: rgba(255,255,255,0.72); font-size: 10px; text-align: center;">Step 1: enter your pilot name.</div>
         </div>
         <div id="firstMissionGuide" style="display: none; max-width: 300px; margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(100,200,255,0.25); background: rgba(100,200,255,0.08); color: #d7f1ff; font-size: 11px; text-align: center; line-height: 1.45;">
             First mission rules: hold to move inward, release to move outward, avoid debris, survive <b>24s</b> once to reach <b>Pilot</b>. Threat rises automatically as you last longer.
         </div>
         <div id="backendStatusLine" style="color: rgba(255,255,255,0.56); font-size: 10px; margin-bottom: 10px;">Cloud sync: checking...</div>
+        <div id="publicStatsPanel" style="width: 100%; max-width: 320px; margin-bottom: 10px; border: 1px solid rgba(100,200,255,0.2); border-radius: 10px; padding: 9px 11px; background: rgba(0,0,0,0.25);">
+            <div style="color: #9ed9ff; font-size: 10px; text-transform: uppercase; text-align: center; margin-bottom: 7px;">Live Game Stats</div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 6px;">
+                <div style="text-align: center;">
+                    <div id="statsVisitors" style="color: #fff; font-size: 15px; font-weight: 600;">0</div>
+                    <div style="color: rgba(255,255,255,0.58); font-size: 8px; text-transform: uppercase;">Visitors</div>
+                </div>
+                <div style="text-align: center;">
+                    <div id="statsPlayers" style="color: #fff; font-size: 15px; font-weight: 600;">0</div>
+                    <div style="color: rgba(255,255,255,0.58); font-size: 8px; text-transform: uppercase;">Players</div>
+                </div>
+                <div style="text-align: center;">
+                    <div id="statsRuns" style="color: #fff; font-size: 15px; font-weight: 600;">0</div>
+                    <div style="color: rgba(255,255,255,0.58); font-size: 8px; text-transform: uppercase;">Runs</div>
+                </div>
+                <div style="text-align: center;">
+                    <div id="statsHighScore" style="color: #fff; font-size: 15px; font-weight: 600;">0</div>
+                    <div style="color: rgba(255,255,255,0.58); font-size: 8px; text-transform: uppercase;">High Score</div>
+                </div>
+            </div>
+            <div id="statsTopPilotLine" style="color: rgba(255,255,255,0.72); font-size: 10px; text-align: center;">Top pilot: No one yet</div>
+        </div>
         <div id="consentPanel" style="display: none; width: 100%; max-width: 320px; margin-bottom: 14px; border: 1px solid rgba(100,200,255,0.2); border-radius: 10px; padding: 10px 12px; background: rgba(0,0,0,0.28);">
             <div style="color: #bfe8ff; font-size: 11px; text-align: center; margin-bottom: 8px;">Privacy settings</div>
             <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 6px;">
@@ -474,7 +556,8 @@
                 <span>Allow crash reports</span>
                 <input id="consentCrash" type="checkbox">
             </label>
-            <button id="consentSaveBtn" style="width: 100%; border: 1px solid rgba(100,200,255,0.3); background: rgba(100,200,255,0.16); color: #d7f1ff; padding: 8px 10px; border-radius: 8px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Save Privacy Choice</button>
+            <button id="consentSaveBtn" style="width: 100%; border: 1px solid rgba(100,200,255,0.3); background: rgba(100,200,255,0.16); color: #d7f1ff; padding: 8px 10px; border-radius: 8px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Step 2: Save Privacy Choice</button>
+            <div id="consentStatusLine" style="color: #ffd36a; font-size: 9px; text-align: center; margin-top: 6px;">Step 2: tap this button once to continue.</div>
             <div style="color: rgba(255,255,255,0.5); font-size: 9px; text-align: center; margin-top: 6px;">Change anytime on this screen.</div>
         </div>
 
@@ -638,21 +721,34 @@
         const detailsToggleBtnEl = document.getElementById('detailsToggleBtn');
         const retentionDetailsEl = document.getElementById('retentionDetails');
         const dailyChallengeDetailLineEl = document.getElementById('dailyChallengeDetailLine');
+        const setupGuideTitleEl = document.getElementById('setupGuideTitle');
+        const setupStepNameEl = document.getElementById('setupStepName');
+        const setupStepPrivacyEl = document.getElementById('setupStepPrivacy');
+        const setupHintEl = document.getElementById('setupHint');
         const welcomeLineEl = document.getElementById('welcomeLine');
+        const nameSetupEl = document.getElementById('nameSetup');
         const playerNameInputEl = document.getElementById('playerNameInput');
         const nameRequirementLineEl = document.getElementById('nameRequirementLine');
         const firstMissionGuideEl = document.getElementById('firstMissionGuide');
         const playerCalloutEl = document.getElementById('playerCallout');
+        const startBtnEl = document.getElementById('startBtn');
         const leaderboardTitleEl = document.getElementById('leaderboardTitle');
         const leaderboardTop5El = document.getElementById('leaderboardTop5');
         const leaderboardUserRankEl = document.getElementById('leaderboardUserRank');
         const paceHintLineEl = document.getElementById('paceHintLine');
         const paceButtons = Array.from(document.querySelectorAll('.pace-btn'));
         const backendStatusLineEl = document.getElementById('backendStatusLine');
+        const publicStatsPanelEl = document.getElementById('publicStatsPanel');
+        const statsVisitorsEl = document.getElementById('statsVisitors');
+        const statsPlayersEl = document.getElementById('statsPlayers');
+        const statsRunsEl = document.getElementById('statsRuns');
+        const statsHighScoreEl = document.getElementById('statsHighScore');
+        const statsTopPilotLineEl = document.getElementById('statsTopPilotLine');
         const consentPanelEl = document.getElementById('consentPanel');
         const consentAnalyticsEl = document.getElementById('consentAnalytics');
         const consentCrashEl = document.getElementById('consentCrash');
         const consentSaveBtnEl = document.getElementById('consentSaveBtn');
+        const consentStatusLineEl = document.getElementById('consentStatusLine');
 
         // Audio
         let audioCtx = null;
@@ -748,6 +844,7 @@
         ];
         let playerProgress = null;
         let dailyChallenge = dailyChallenges[0];
+        let forcedGuideStep = '';
 
         // Death animation state
         let deathAnimation = {
@@ -817,7 +914,16 @@
                 cloudRank: 0,
                 cloudField: 0,
                 unlocks: [],
-                lastUnlocks: []
+                lastUnlocks: [],
+                publicStats: {
+                    visitors: 0,
+                    players: 0,
+                    totalRuns: 0,
+                    highestScore: 0,
+                    topPlayer: 'No one yet',
+                    visitorsToday: 0,
+                    runsToday: 0
+                }
             };
         }
 
@@ -935,6 +1041,105 @@
             }
         }
 
+        function formatWholeNumber(value) {
+            return Math.max(0, Math.floor(Number(value || 0))).toLocaleString('en-US');
+        }
+
+        function renderPublicStats() {
+            if (!playerProgress) return;
+            const defaults = createDefaultProgress().publicStats;
+            const stats = Object.assign({}, defaults, playerProgress.publicStats || {});
+
+            if (statsVisitorsEl) statsVisitorsEl.textContent = formatWholeNumber(stats.visitors);
+            if (statsPlayersEl) statsPlayersEl.textContent = formatWholeNumber(stats.players);
+            if (statsRunsEl) statsRunsEl.textContent = formatWholeNumber(stats.totalRuns);
+            if (statsHighScoreEl) statsHighScoreEl.textContent = formatWholeNumber(stats.highestScore);
+            if (statsTopPilotLineEl) {
+                statsTopPilotLineEl.textContent = 'Top pilot: ' + (sanitizePlayerName(stats.topPlayer) || 'No one yet');
+            }
+        }
+
+        function updateOnboardingGuide() {
+            if (!playerProgress) return;
+            const typedName = sanitizePlayerName(playerNameInputEl ? playerNameInputEl.value : '');
+            const hasName = !!(playerProgress.playerName || typedName);
+            const hasPrivacySaved = !!playerProgress.consentSet;
+
+            if (hasName && forcedGuideStep === 'name') forcedGuideStep = '';
+            if (hasPrivacySaved && forcedGuideStep === 'privacy') forcedGuideStep = '';
+
+            const currentStep = forcedGuideStep || (!hasName ? 'name' : (!hasPrivacySaved ? 'privacy' : 'done'));
+
+            if (setupGuideTitleEl) {
+                setupGuideTitleEl.textContent = currentStep === 'done' ? 'Ready To Launch' : 'Quick Setup: 2 Steps';
+            }
+
+            if (setupStepNameEl) {
+                setupStepNameEl.className = 'setup-step ' + (hasName ? 'done' : 'pending');
+                setupStepNameEl.textContent = hasName ? '1. Name saved ✅' : '1. Type your pilot name';
+            }
+
+            if (setupStepPrivacyEl) {
+                setupStepPrivacyEl.className = 'setup-step ' + (hasPrivacySaved ? 'done' : 'pending');
+                setupStepPrivacyEl.textContent = hasPrivacySaved ? '2. Privacy saved ✅' : '2. Tap "Save Privacy Choice"';
+            }
+
+            if (setupHintEl) {
+                if (currentStep === 'name') setupHintEl.textContent = 'Tap in the name box, type your name, then tap START.';
+                else if (currentStep === 'privacy') setupHintEl.textContent = 'Now tap the privacy button: "Save Privacy Choice".';
+                else setupHintEl.textContent = 'All done. Tap START to play.';
+            }
+
+            if (nameSetupEl) nameSetupEl.classList.toggle('focus-pulse', currentStep === 'name');
+            if (consentPanelEl) consentPanelEl.classList.toggle('focus-pulse', currentStep === 'privacy');
+
+            if (consentStatusLineEl) {
+                if (hasPrivacySaved) {
+                    consentStatusLineEl.style.color = '#9bf0b6';
+                    consentStatusLineEl.textContent = 'Privacy saved ✅ You can update and save again anytime.';
+                } else {
+                    consentStatusLineEl.style.color = '#ffd36a';
+                    consentStatusLineEl.textContent = 'Step 2 required: tap Save Privacy Choice.';
+                }
+            }
+
+            if (consentSaveBtnEl) {
+                consentSaveBtnEl.textContent = hasPrivacySaved ? 'Update Privacy Choice' : 'Step 2: Save Privacy Choice';
+            }
+
+            if (startBtnEl) {
+                if (currentStep === 'name') {
+                    startBtnEl.classList.add('locked');
+                    startBtnEl.textContent = 'STEP 1: ENTER NAME';
+                } else if (currentStep === 'privacy') {
+                    startBtnEl.classList.add('locked');
+                    startBtnEl.textContent = 'STEP 2: SAVE PRIVACY';
+                } else {
+                    startBtnEl.classList.remove('locked');
+                    startBtnEl.textContent = 'START';
+                }
+            }
+        }
+
+        function focusOnboardingStep(step) {
+            forcedGuideStep = step;
+            updateOnboardingGuide();
+            if (step === 'name') {
+                if (playerNameInputEl) {
+                    playerNameInputEl.style.display = 'block';
+                    playerNameInputEl.focus();
+                }
+                if (nameSetupEl) nameSetupEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            if (step === 'privacy') {
+                if (consentPanelEl) {
+                    consentPanelEl.style.display = 'block';
+                    consentPanelEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
         function setBackendStatus(text, ok = false) {
             backendOnline = ok;
             if (!backendStatusLineEl) return;
@@ -968,6 +1173,33 @@
                 await backendRequest('/health', 'GET', null, 1800);
             } catch (e) {
                 setBackendStatus('Cloud sync: offline fallback', false);
+            }
+        }
+
+        async function trackVisit() {
+            try {
+                await backendRequest('/v1/visit', 'POST', { deviceId }, 1800);
+            } catch (e) {}
+        }
+
+        async function refreshPublicStats() {
+            if (!playerProgress) return;
+            try {
+                const data = await backendRequest('/v1/stats/public', 'GET', null, 2500);
+                playerProgress.publicStats = {
+                    visitors: Math.max(0, Number(data.visitors || 0)),
+                    players: Math.max(0, Number(data.players || 0)),
+                    totalRuns: Math.max(0, Number(data.totalRuns || 0)),
+                    highestScore: Math.max(0, Number(data.highestScore || 0)),
+                    topPlayer: sanitizePlayerName(data.topPlayer || '') || 'No one yet',
+                    visitorsToday: Math.max(0, Number(data.visitorsToday || 0)),
+                    runsToday: Math.max(0, Number(data.runsToday || 0))
+                };
+                if (publicStatsPanelEl) publicStatsPanelEl.style.opacity = '1';
+                renderPublicStats();
+                savePlayerData();
+            } catch (e) {
+                if (publicStatsPanelEl) publicStatsPanelEl.style.opacity = '0.86';
             }
         }
 
@@ -1222,6 +1454,11 @@
             if (!Array.isArray(playerProgress.pendingRunSync)) playerProgress.pendingRunSync = [];
             if (!Array.isArray(playerProgress.cloudTop5)) playerProgress.cloudTop5 = [];
             if (!Array.isArray(playerProgress.cloudTopEntries)) playerProgress.cloudTopEntries = [];
+            if (!playerProgress.publicStats || typeof playerProgress.publicStats !== 'object') {
+                playerProgress.publicStats = Object.assign({}, defaults.publicStats);
+            } else {
+                playerProgress.publicStats = Object.assign({}, defaults.publicStats, playerProgress.publicStats);
+            }
             playerProgress.playerName = sanitizePlayerName(playerProgress.playerName);
             if (!leaderboardPaceProfiles[playerProgress.leaderboardPace]) playerProgress.leaderboardPace = 'medium';
             playerProgress.analyticsAllowed = !!playerProgress.analyticsAllowed;
@@ -1236,14 +1473,18 @@
             dailyChallenge = selectDailyChallenge(todayKey);
             savePlayerData();
             updateStartScreenProfileUI();
+            renderPublicStats();
             renderLeaderboardFromProgress();
             setBackendStatus('Cloud sync: checking...', false);
             pingBackend();
+            trackVisit();
+            refreshPublicStats();
             initOptionalTelemetry();
             ensureCloudProfile().then(async () => {
                 await syncConsentToCloud();
                 await syncQueuedRunsToCloud();
                 await refreshCloudState();
+                await refreshPublicStats();
             });
         }
 
@@ -1361,15 +1602,13 @@
             if (playerNameInputEl) {
                 if (hasName) {
                     playerNameInputEl.value = playerProgress.playerName;
-                    playerNameInputEl.style.display = 'none';
-                } else {
-                    playerNameInputEl.style.display = 'block';
                 }
+                playerNameInputEl.style.display = 'block';
             }
             if (nameRequirementLineEl) {
                 nameRequirementLineEl.textContent = hasName
-                    ? 'Pilot profile saved. Cloud sync updates records when online.'
-                    : 'Enter your pilot name to launch.';
+                    ? 'Step 1 done: name saved. You can edit it above.'
+                    : 'Step 1: enter your pilot name.';
                 nameRequirementLineEl.style.color = hasName ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.72)';
             }
             if (firstMissionGuideEl) {
@@ -1384,10 +1623,11 @@
                 btn.classList.toggle('selected', selected);
             });
             if (consentPanelEl) {
-                consentPanelEl.style.display = playerProgress.consentSet ? 'none' : 'block';
+                consentPanelEl.style.display = 'block';
             }
             if (consentAnalyticsEl) consentAnalyticsEl.checked = !!playerProgress.analyticsAllowed;
             if (consentCrashEl) consentCrashEl.checked = !!playerProgress.crashAllowed;
+            updateOnboardingGuide();
         }
 
         function pauseRuntime() {
@@ -1809,33 +2049,40 @@
             initAudio();
             if (!playerProgress) loadPlayerData();
             const enteredName = sanitizePlayerName(playerNameInputEl ? playerNameInputEl.value : '');
-            if (!playerProgress.playerName) {
-                if (!enteredName) {
-                    if (nameRequirementLineEl) {
-                        nameRequirementLineEl.textContent = 'Enter your pilot name first.';
-                        nameRequirementLineEl.style.color = '#ffd36a';
-                    }
-                    if (playerNameInputEl) playerNameInputEl.focus();
-                    return;
+            if (!playerProgress.playerName && !enteredName) {
+                if (nameRequirementLineEl) {
+                    nameRequirementLineEl.textContent = 'Step 1 missing: type your pilot name first.';
+                    nameRequirementLineEl.style.color = '#ffd36a';
                 }
+                focusOnboardingStep('name');
+                return;
+            }
+
+            if (enteredName && enteredName !== playerProgress.playerName) {
                 playerProgress.playerName = enteredName;
                 savePlayerData();
                 updateStartScreenProfileUI();
             }
+
             if (!playerProgress.consentSet) {
                 if (nameRequirementLineEl) {
-                    nameRequirementLineEl.textContent = 'Choose privacy settings first.';
+                    nameRequirementLineEl.textContent = 'Step 2 missing: tap Save Privacy Choice.';
                     nameRequirementLineEl.style.color = '#ffd36a';
                 }
-                if (consentPanelEl) consentPanelEl.style.display = 'block';
+                focusOnboardingStep('privacy');
                 return;
             }
+
+            forcedGuideStep = '';
+            updateOnboardingGuide();
+
             if (nameRequirementLineEl) {
-                nameRequirementLineEl.textContent = 'Pilot profile saved. Cloud sync updates records when online.';
+                nameRequirementLineEl.textContent = 'Setup complete ✅ Launching mission.';
                 nameRequirementLineEl.style.color = 'rgba(255,255,255,0.5)';
             }
             await ensureCloudProfile();
             refreshCloudState();
+            refreshPublicStats();
             hiddenAt = 0;
             gameState = 'playing';
             if (startScreen) startScreen.style.display = 'none';
@@ -2019,6 +2266,7 @@
             }
             renderLeaderboardFromProgress();
             refreshCloudState();
+            refreshPublicStats();
 
             setRetentionDetailsVisible(false);
             sendAnalyticsEvent('run_finish', { score: computedScore, survival: Math.floor(survivalTime), planet: currentPlanet });
@@ -2064,7 +2312,7 @@
             });
         }
 
-        bindBtn(document.getElementById('startBtn'), startGame);
+        bindBtn(startBtnEl, startGame);
         bindBtn(document.getElementById('restartBtn'), restart);
         bindBtn(document.getElementById('victoryRestart'), restart);
         bindBtn(document.getElementById('continueBtn'), nextPlanet);
@@ -2087,6 +2335,7 @@
                 playerProgress.analyticsAllowed = !!(consentAnalyticsEl && consentAnalyticsEl.checked);
                 playerProgress.crashAllowed = !!(consentCrashEl && consentCrashEl.checked);
                 playerProgress.consentSet = true;
+                forcedGuideStep = '';
                 savePlayerData();
                 updateStartScreenProfileUI();
                 syncConsentToCloud();
@@ -2096,6 +2345,18 @@
                     crashAllowed: playerProgress.crashAllowed
                 });
             });
+        }
+        if (playerNameInputEl) {
+            playerNameInputEl.addEventListener('input', () => {
+                if (forcedGuideStep === 'name') forcedGuideStep = '';
+                updateOnboardingGuide();
+            });
+        }
+        if (consentAnalyticsEl) {
+            consentAnalyticsEl.addEventListener('change', () => updateOnboardingGuide());
+        }
+        if (consentCrashEl) {
+            consentCrashEl.addEventListener('change', () => updateOnboardingGuide());
         }
         if (detailsToggleBtnEl) {
             detailsToggleBtnEl.addEventListener('click', (e) => {
