@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: orbital-defense-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev
+    startCommand: BACKEND_HOST=0.0.0.0 BACKEND_PORT=$PORT node backend/src/server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: BACKEND_CORS_ORIGIN
+        value: "*"
+      - key: BACKEND_API_KEY
+        sync: false
+
+  - type: web
+    name: orbital-defense-web
+    runtime: static
+    buildCommand: npm ci --include=dev && npm run build:render
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    envVars:
+      - key: ORBIT_BACKEND_BASE
+        value: https://orbital-defense-api.onrender.com
+      - key: ORBIT_API_KEY
+        sync: false
+      - key: ORBIT_SENTRY_DSN
+        sync: false
+      - key: ORBIT_FIREBASE_MEASUREMENT_ID
+        sync: false

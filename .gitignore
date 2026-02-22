@@ -1,0 +1,39 @@
+node_modules/
+dist/
+.playwright-cli/
+output/
+.DS_Store
+*.log
+*.pid
+
+# Local runtime and env files
+runtime-config.local.js
+runtime-config.prod.js
+*.local
+
+# Android build artifacts
+android/.gradle/
+android/local.properties
+android/build/
+android/app/build/
+android/captures/
+
+# iOS/Xcode artifacts
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+ios/App/App.xcworkspace/xcuserdata/
+ios/App/App.xcodeproj/xcuserdata/
+ios/App/DerivedData/
+*.xcuserstate
+
+# Backend local data
+backend/data/*.sqlite
+backend/data/*.sqlite-*
+backend/.env
+.env
+
+# Signing keys
+android/key.properties
+keystore/
+android/keystore/

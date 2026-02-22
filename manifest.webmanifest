@@ -1,0 +1,25 @@
+{
+  "name": "Orbital Defense",
+  "short_name": "Orbital",
+  "description": "Arcade survival orbit defense game.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07111F",
+  "theme_color": "#050508",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

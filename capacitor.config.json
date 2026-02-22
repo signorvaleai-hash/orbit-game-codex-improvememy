@@ -1,0 +1,9 @@
+{
+  "appId": "com.orbital.defense",
+  "appName": "Orbital Defense",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "server": {
+    "cleartext": true
+  }
+}

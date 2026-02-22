@@ -1,0 +1,32 @@
+{
+  "name": "orbital-defense-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Orbital Defense production app shell",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "build:render": "vite build && node scripts/write_runtime_config.js",
+    "assets:generate": "./scripts/generate_assets.sh",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "cap:sync": "npm run assets:generate && npm run build && npx cap sync",
+    "cap:copy": "npm run assets:generate && npm run build && npx cap copy",
+    "cap:add:android": "npx cap add android",
+    "cap:add:ios": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npx cap add ios",
+    "cap:android": "npm run cap:sync && npx cap open android",
+    "cap:ios": "DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npm run cap:sync && DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer npx cap open ios",
+    "android:release:aab": "./scripts/build_android_release.sh",
+    "backend:dev": "node --watch backend/src/server.js",
+    "backend:start": "node backend/src/server.js",
+    "dev:all": "concurrently \"npm run dev\" \"npm run backend:dev\""
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.4.2",
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.4.2",
+    "@capacitor/core": "^7.4.2",
+    "@capacitor/ios": "^7.4.2",
+    "concurrently": "^9.2.1",
+    "vite": "^7.1.11"
+  }
+}

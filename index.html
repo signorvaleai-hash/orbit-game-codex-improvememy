@@ -1,0 +1,2414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#050508">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" type="image/png" sizes="192x192" href="./assets/icons/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./assets/icons/icon-512.png">
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+    <title>ORBITAL DEFENSE</title>
+    <script src="./runtime-config.js"></script>
+    <style>
+        :root {
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-right: env(safe-area-inset-right, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-left: env(safe-area-inset-left, 0px);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            min-height: 100dvh;
+            background: #000;
+            overflow: hidden;
+            position: fixed;
+            font-family: -apple-system, sans-serif;
+            overscroll-behavior: none;
+            -webkit-text-size-adjust: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #gameCanvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            touch-action: none;
+        }
+
+        #ui {
+            position: absolute;
+            top: calc(40px + var(--safe-top));
+            left: 0;
+            right: 0;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #score {
+            font-size: 40px;
+            font-weight: 100;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(100, 200, 255, 0.8);
+        }
+
+        #planetIndicator {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 5px;
+        }
+
+        #stats {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 9px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+        }
+
+        .stat-bar {
+            width: 70px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            margin-top: 4px;
+            overflow: hidden;
+        }
+
+        .stat-fill {
+            height: 100%;
+            transition: width 0.1s;
+        }
+
+        #heatFill { background: linear-gradient(90deg, #ffaa00, #ff2200); }
+        #gravityFill { background: linear-gradient(90deg, #4488ff, #aa44ff); }
+
+        #difficultyIndicator {
+            position: absolute;
+            top: calc(10px + var(--safe-top));
+            right: calc(15px + var(--safe-right));
+            text-align: right;
+            pointer-events: none;
+        }
+
+        #difficultyText {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+        }
+
+        #difficultyLevel {
+            font-size: 22px;
+            font-weight: 700;
+            color: #ff6b6b;
+        }
+
+        #upgradePanel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 20px;
+            padding-bottom: calc(20px + var(--safe-bottom));
+            display: none;
+            z-index: 25;
+            pointer-events: auto;
+        }
+
+        #upgradeTitle {
+            color: #64c8ff;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        #upgradePoints {
+            text-align: center;
+            color: #ffd700;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .upgrade-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            max-width: 350px;
+            margin: 0 auto;
+        }
+
+        .upgrade-btn {
+            background: rgba(100, 200, 255, 0.1);
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px 5px;
+            color: #fff;
+            font-size: 11px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .upgrade-btn.disabled {
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        .upgrade-btn .level {
+            color: #ffd700;
+            font-size: 10px;
+            margin-top: 3px;
+        }
+
+        #continueBtn {
+            background: linear-gradient(135deg, #64c8ff, #a855f7);
+            border: none;
+            color: #fff;
+            padding: 15px 40px;
+            font-size: 16px;
+            border-radius: 25px;
+            margin: 15px auto 0;
+            display: block;
+            cursor: pointer;
+        }
+
+        #startScreen, #gameOver, #victoryScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 20;
+            padding-top: calc(30px + var(--safe-top));
+            padding-right: calc(30px + var(--safe-right));
+            padding-bottom: calc(30px + var(--safe-bottom));
+            padding-left: calc(30px + var(--safe-left));
+        }
+
+        #gameOver, #victoryScreen {
+            display: none;
+        }
+
+        .title {
+            font-size: 32px;
+            color: #64c8ff;
+            font-weight: 200;
+            margin-bottom: 10px;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            margin-bottom: 25px;
+            text-align: center;
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+        .mode-select {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 260px;
+            margin-bottom: 20px;
+        }
+
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 16px 20px;
+            border-radius: 10px;
+            font-size: 15px;
+            cursor: default;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mode-btn.selected {
+            background: rgba(100, 200, 255, 0.2);
+            border-color: #64c8ff;
+        }
+
+        .mode-btn .tag {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background: rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+        }
+
+        .mode-btn .tag.normal {
+            background: rgba(100, 200, 255, 0.3);
+            color: #64c8ff;
+        }
+
+        .pace-select {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 14px;
+            width: 100%;
+            max-width: 260px;
+        }
+
+        .pace-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            color: rgba(255, 255, 255, 0.82);
+            border-radius: 8px;
+            font-size: 10px;
+            text-transform: uppercase;
+            padding: 8px 4px;
+            cursor: pointer;
+        }
+
+        .pace-btn.selected {
+            border-color: #64c8ff;
+            background: rgba(100, 200, 255, 0.18);
+            color: #bfe8ff;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #64c8ff, #a855f7);
+            border: none;
+            color: #fff;
+            padding: 18px 45px;
+            font-size: 17px;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 0 25px rgba(100, 200, 255, 0.3);
+        }
+
+        #finalScore, #victoryScore {
+            font-size: 18px;
+            color: #fff;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        #deathReason {
+            font-size: 14px;
+            color: #ff6b6b;
+            margin-bottom: 25px;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        #tutorial {
+            position: absolute;
+            bottom: calc(90px + var(--safe-bottom));
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 13px;
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+        }
+
+        #bossWarning {
+            position: absolute;
+            top: 45%;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 28px;
+            font-weight: 700;
+            color: #ff0000;
+            text-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            display: none;
+            z-index: 8;
+            pointer-events: none;
+            animation: pulse 0.6s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.03); }
+        }
+
+        .planet-preview {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin: 15px 0;
+        }
+
+        .planet-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .planet-dot.saved {
+            background: #64c8ff;
+            box-shadow: 0 0 8px #64c8ff;
+        }
+
+        .planet-dot.current {
+            background: #ffd700;
+            box-shadow: 0 0 8px #ffd700;
+        }
+
+        input {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="ui">
+        <div id="score">0</div>
+        <div id="planetIndicator">Planet 1 of 3</div>
+        <div id="stats">
+            <div class="stat">
+                <div class="stat-label">Heat</div>
+                <div class="stat-bar"><div class="stat-fill" id="heatFill"></div></div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">Gravity</div>
+                <div class="stat-bar"><div class="stat-fill" id="gravityFill"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="difficultyIndicator">
+        <div id="difficultyText">Threat</div>
+        <div id="difficultyLevel">1</div>
+    </div>
+
+    <div id="bossWarning">⚠️ BOSS ⚠️</div>
+
+    <div id="upgradePanel">
+        <div id="upgradeTitle">Upgrades Available</div>
+        <div id="upgradePoints">0 Points</div>
+        <div class="upgrade-grid">
+            <div class="upgrade-btn" id="upgHeat">
+                <div>❄️ Cool</div>
+                <div class="level">Lvl 1</div>
+            </div>
+            <div class="upgrade-btn" id="upgGravity">
+                <div>🌍 Grav</div>
+                <div class="level">Lvl 1</div>
+            </div>
+            <div class="upgrade-btn" id="upgSpeed">
+                <div>⚡ Speed</div>
+                <div class="level">Lvl 1</div>
+            </div>
+            <div class="upgrade-btn" id="upgShield">
+                <div>🛡️ Shield</div>
+                <div class="level">Lvl 0</div>
+            </div>
+            <div class="upgrade-btn" id="upgSize">
+                <div>🔍 Size</div>
+                <div class="level">Lvl 1</div>
+            </div>
+            <div class="upgrade-btn" id="upgLuck">
+                <div>🍀 Luck</div>
+                <div class="level">Lvl 1</div>
+            </div>
+        </div>
+        <button id="continueBtn">Next Planet</button>
+    </div>
+
+    <div id="startScreen">
+        <div class="title">ORBITAL DEFENSE</div>
+        <div class="subtitle">Save 3 planets from the debris field</div>
+        <div id="welcomeLine" style="color: #9ed9ff; font-size: 13px; margin-bottom: 8px;">Pilot profile required</div>
+        <div id="nameSetup" style="display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 280px; margin-bottom: 12px;">
+            <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter pilot name" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(100,200,255,0.35); background: rgba(0,0,0,0.35); color: #fff; text-align: center; font-size: 13px;">
+            <div id="nameRequirementLine" style="color: rgba(255,255,255,0.6); font-size: 10px; text-align: center;">Your name is saved on this device.</div>
+        </div>
+        <div id="firstMissionGuide" style="display: none; max-width: 300px; margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(100,200,255,0.25); background: rgba(100,200,255,0.08); color: #d7f1ff; font-size: 11px; text-align: center; line-height: 1.45;">
+            First mission rules: hold to move inward, release to move outward, avoid debris, survive <b>24s</b> once to reach <b>Pilot</b>. Threat rises automatically as you last longer.
+        </div>
+        <div id="backendStatusLine" style="color: rgba(255,255,255,0.56); font-size: 10px; margin-bottom: 10px;">Cloud sync: checking...</div>
+        <div id="consentPanel" style="display: none; width: 100%; max-width: 320px; margin-bottom: 14px; border: 1px solid rgba(100,200,255,0.2); border-radius: 10px; padding: 10px 12px; background: rgba(0,0,0,0.28);">
+            <div style="color: #bfe8ff; font-size: 11px; text-align: center; margin-bottom: 8px;">Privacy settings</div>
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 6px;">
+                <span>Allow analytics</span>
+                <input id="consentAnalytics" type="checkbox">
+            </label>
+            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 8px;">
+                <span>Allow crash reports</span>
+                <input id="consentCrash" type="checkbox">
+            </label>
+            <button id="consentSaveBtn" style="width: 100%; border: 1px solid rgba(100,200,255,0.3); background: rgba(100,200,255,0.16); color: #d7f1ff; padding: 8px 10px; border-radius: 8px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Save Privacy Choice</button>
+            <div style="color: rgba(255,255,255,0.5); font-size: 9px; text-align: center; margin-top: 6px;">Change anytime on this screen.</div>
+        </div>
+
+        <div class="mode-select">
+            <div class="mode-btn selected">
+                <span>🌍 Earth Orbit</span>
+                <span class="tag normal">Adaptive</span>
+            </div>
+        </div>
+
+        <div id="paceHintLine" style="color: rgba(255,255,255,0.62); font-size: 10px; margin-bottom: 6px;">Leaderboard pace</div>
+        <div class="pace-select">
+            <button class="pace-btn" data-pace="easy">Easy</button>
+            <button class="pace-btn selected" data-pace="medium">Medium</button>
+            <button class="pace-btn" data-pace="hard">Hard</button>
+        </div>
+
+        <div class="planet-preview">
+            <div class="planet-dot current"></div>
+            <div class="planet-dot"></div>
+            <div class="planet-dot"></div>
+        </div>
+
+        <button class="btn" id="startBtn">START</button>
+    </div>
+
+        <div id="gameOver">
+            <div class="title">MISSION FAILED</div>
+            <div id="finalScore">0s</div>
+            <div id="deathReason"></div>
+            <div id="playerCallout" style="color: #9ed9ff; font-size: 12px; margin-bottom: 6px;">Pilot status</div>
+
+            <div id="retentionStats" style="background: rgba(100,200,255,0.08); border: 1px solid rgba(100,200,255,0.25); border-radius: 12px; padding: 15px 20px; margin: 15px 0; min-width: 300px; max-width: 460px;">
+                <div style="color: #64c8ff; font-size: 12px; text-transform: uppercase; text-align: center; margin-bottom: 10px;">Mission Summary</div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    <div style="text-align: center; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                        <div id="retentionTime" style="color: #fff; font-size: 19px; font-weight: 600;">0s</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 9px; text-transform: uppercase;">Survival Time</div>
+                    </div>
+                    <div style="text-align: center; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                        <div id="retentionScore" style="color: #fff; font-size: 19px; font-weight: 600;">0</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 9px; text-transform: uppercase;">Total Score</div>
+                    </div>
+                </div>
+
+                <div id="retentionBadges" style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 10px;"></div>
+
+                <div style="margin-top: 10px; border-top: 1px solid rgba(100,200,255,0.2); padding-top: 10px;">
+                    <div id="rankCurrent" style="color: #fff; font-size: 16px; text-align: center; margin-bottom: 4px;">Rank: Rookie</div>
+                    <div id="rankNext" style="color: rgba(255,255,255,0.78); font-size: 12px; text-align: center; margin-bottom: 6px;">Next Rank: Pilot (30s remaining)</div>
+                    <div id="streakLine" style="color: #ffd36a; font-size: 13px; text-align: center; margin-bottom: 6px;">Day 1 Streak - Don't lose it.</div>
+                    <div id="dailyChallengeLine" style="color: #9ed9ff; font-size: 11px; text-align: center;">Challenge: Calm Orbit</div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px;">
+                    <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                        <div id="lifetimeRuns" style="color: #fff; font-size: 16px; font-weight: 600;">0</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Runs</div>
+                    </div>
+                    <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                        <div id="lifetimeBest" style="color: #fff; font-size: 16px; font-weight: 600;">0s</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Best Ever</div>
+                    </div>
+                    <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                        <div id="lifetimeDistance" style="color: #fff; font-size: 16px; font-weight: 600;">0 km</div>
+                        <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Distance</div>
+                    </div>
+                </div>
+
+                <div id="unlockLine" style="display: none; margin-top: 10px; text-align: center; color: #ffe38a; font-size: 12px; background: rgba(255,215,110,0.12); border: 1px solid rgba(255,215,110,0.35); border-radius: 8px; padding: 8px 10px;">
+                    Unlocked: Gold Orbit
+                </div>
+
+                <div id="leaderboardBlock" style="margin-top: 10px; padding: 10px; border-radius: 8px; background: rgba(0,0,0,0.22); border: 1px solid rgba(100,200,255,0.16);">
+                    <div id="leaderboardTitle" style="color: #64c8ff; font-size: 10px; text-transform: uppercase; text-align: center; margin-bottom: 6px;">Global Top 5</div>
+                    <div id="leaderboardTop5" style="color: rgba(255,255,255,0.9); font-size: 11px; text-align: center; line-height: 1.5;">Loading leaderboard...</div>
+                    <div id="leaderboardUserRank" style="color: #ffd36a; font-size: 11px; text-align: center; margin-top: 6px;">Loading your rank...</div>
+                </div>
+
+                <button id="detailsToggleBtn" style="margin: 10px auto 0; display: block; background: transparent; border: 1px solid rgba(100,200,255,0.3); color: #8fcbef; padding: 6px 14px; border-radius: 999px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Show Details</button>
+
+                <div id="retentionDetails" style="display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(100,200,255,0.2);">
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                        <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                            <div id="retentionPlanets" style="color: #fff; font-size: 16px; font-weight: 600;">0/3</div>
+                            <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Planets Saved</div>
+                        </div>
+                        <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                            <div id="retentionDifficulty" style="color: #fff; font-size: 16px; font-weight: 600;">1</div>
+                            <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Max Threat</div>
+                        </div>
+                        <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                            <div id="lifetimeTime" style="color: #fff; font-size: 16px; font-weight: 600;">0s</div>
+                            <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Lifetime Orbit Time</div>
+                        </div>
+                        <div style="text-align: center; padding: 7px; background: rgba(0,0,0,0.22); border-radius: 8px;">
+                            <div id="todayRecordLine" style="color: #fff; font-size: 16px; font-weight: 600;">0s</div>
+                            <div style="color: rgba(255,255,255,0.5); font-size: 8px; text-transform: uppercase;">Today Best</div>
+                        </div>
+                    </div>
+                    <div id="bestScoreLine" style="color: rgba(255,255,255,0.74); font-size: 10px; text-align: center; margin-top: 8px;">Best Score Ever: 0</div>
+                    <div id="dailyChallengeDetailLine" style="color: rgba(158,217,255,0.9); font-size: 10px; text-align: center; margin-top: 6px;">Daily Challenge: Calm Orbit</div>
+                    <div style="margin-top: 8px; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.25); border: 1px solid rgba(100,200,255,0.12);">
+                        <div id="scoreMathLine" style="color: rgba(255,255,255,0.82); font-size: 10px; text-align: center; line-height: 1.45;">Score = (Time 0 + Planet 0) x Challenge 1.00 = 0</div>
+                        <div id="rankMathLine" style="color: rgba(255,255,255,0.72); font-size: 10px; text-align: center; margin-top: 4px;">Rank progress: 0/24s (0%)</div>
+                        <div id="lifetimeMathLine" style="color: rgba(255,255,255,0.62); font-size: 10px; text-align: center; margin-top: 4px;">Run distance 0.0 km • Avg run 0s</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" id="restartBtn">RETRY</button>
+        </div>
+    </div>
+
+    <div id="victoryScreen">
+        <div class="title">🌟 VICTORY 🌟</div>
+        <div id="victoryScore">Score: 0</div>
+        <div class="subtitle">All planets saved!</div>
+        <button class="btn" id="victoryRestart">PLAY AGAIN</button>
+    </div>
+
+    <div id="tutorial">HOLD: Move In • RELEASE: Move Out</div>
+
+    <script>
+        // Core elements
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const planetIndicator = document.getElementById('planetIndicator');
+        const heatFill = document.getElementById('heatFill');
+        const gravityFill = document.getElementById('gravityFill');
+        const difficultyLevel = document.getElementById('difficultyLevel');
+        const bossWarning = document.getElementById('bossWarning');
+        const upgradePanel = document.getElementById('upgradePanel');
+        const upgradePointsEl = document.getElementById('upgradePoints');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOver');
+        const victoryScreen = document.getElementById('victoryScreen');
+        const tutorialEl = document.getElementById('tutorial');
+        const finalScoreEl = document.getElementById('finalScore');
+        const deathReasonEl = document.getElementById('deathReason');
+        const retentionTimeEl = document.getElementById('retentionTime');
+        const retentionPlanetsEl = document.getElementById('retentionPlanets');
+        const retentionDifficultyEl = document.getElementById('retentionDifficulty');
+        const retentionScoreEl = document.getElementById('retentionScore');
+        const retentionBadgesEl = document.getElementById('retentionBadges');
+        const rankCurrentEl = document.getElementById('rankCurrent');
+        const rankNextEl = document.getElementById('rankNext');
+        const streakLineEl = document.getElementById('streakLine');
+        const todayRecordLineEl = document.getElementById('todayRecordLine');
+        const dailyChallengeLineEl = document.getElementById('dailyChallengeLine');
+        const lifetimeRunsEl = document.getElementById('lifetimeRuns');
+        const lifetimeTimeEl = document.getElementById('lifetimeTime');
+        const lifetimeBestEl = document.getElementById('lifetimeBest');
+        const lifetimeDistanceEl = document.getElementById('lifetimeDistance');
+        const bestScoreLineEl = document.getElementById('bestScoreLine');
+        const unlockLineEl = document.getElementById('unlockLine');
+        const scoreMathLineEl = document.getElementById('scoreMathLine');
+        const rankMathLineEl = document.getElementById('rankMathLine');
+        const lifetimeMathLineEl = document.getElementById('lifetimeMathLine');
+        const detailsToggleBtnEl = document.getElementById('detailsToggleBtn');
+        const retentionDetailsEl = document.getElementById('retentionDetails');
+        const dailyChallengeDetailLineEl = document.getElementById('dailyChallengeDetailLine');
+        const welcomeLineEl = document.getElementById('welcomeLine');
+        const playerNameInputEl = document.getElementById('playerNameInput');
+        const nameRequirementLineEl = document.getElementById('nameRequirementLine');
+        const firstMissionGuideEl = document.getElementById('firstMissionGuide');
+        const playerCalloutEl = document.getElementById('playerCallout');
+        const leaderboardTitleEl = document.getElementById('leaderboardTitle');
+        const leaderboardTop5El = document.getElementById('leaderboardTop5');
+        const leaderboardUserRankEl = document.getElementById('leaderboardUserRank');
+        const paceHintLineEl = document.getElementById('paceHintLine');
+        const paceButtons = Array.from(document.querySelectorAll('.pace-btn'));
+        const backendStatusLineEl = document.getElementById('backendStatusLine');
+        const consentPanelEl = document.getElementById('consentPanel');
+        const consentAnalyticsEl = document.getElementById('consentAnalytics');
+        const consentCrashEl = document.getElementById('consentCrash');
+        const consentSaveBtnEl = document.getElementById('consentSaveBtn');
+
+        // Audio
+        let audioCtx = null;
+        function initAudio() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+            } catch(e) {}
+        }
+
+        function playTone(freq, duration, type = 'sine', vol = 0.1) {
+            if (!audioCtx) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.frequency.value = freq;
+                osc.type = type;
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch(e) {}
+        }
+
+        function playAlert() { playTone(800, 0.08, 'sawtooth', 0.1); }
+        function playExplosion() {
+            // Layered explosion sound
+            playTone(150, 0.4, 'sawtooth', 0.3);
+            setTimeout(() => playTone(100, 0.5, 'square', 0.2), 50);
+            setTimeout(() => playTone(60, 0.6, 'sawtooth', 0.25), 100);
+        }
+
+        // Game state
+        let gameState = 'start';
+        let currentPlanet = 1;
+        const totalPlanets = 3;
+        let score = 0;
+        let startTime = 0;
+        let isHolding = false;
+        let particles = [];
+        let debris = [];
+        let stars = [];
+        let upgradePoints = 0;
+        let difficulty = 1;
+        let survivalTime = 0;
+        let bossSpawned = false;
+        let nextSpawnTime = 0;
+        let runOrbitDistance = 0;
+        let runProgressCommitted = false;
+        let hiddenAt = 0;
+        let activeServerSessionId = '';
+        let syncingQueuedRuns = false;
+        let backendOnline = false;
+
+        const runtimeConfig = window.ORBIT_RUNTIME || {};
+        const BACKEND_BASE = String(runtimeConfig.backendBase || 'http://127.0.0.1:8787').replace(/\/+$/, '');
+        const BACKEND_API_KEY = String(runtimeConfig.apiKey || '');
+        const DEVICE_ID_KEY = 'orbit-device-id-v1';
+        let deviceId = localStorage.getItem(DEVICE_ID_KEY);
+        if (!deviceId) {
+            deviceId = (crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+            localStorage.setItem(DEVICE_ID_KEY, deviceId);
+        }
+
+        const SAVE_KEY = 'orbit-defense-progress-v1';
+        const leaderboardPaceProfiles = {
+            easy: { topGrowMin: 1, topGrowRange: 5, surgeFloor: 6, surgeMult: 0.018, fieldBase: 220, fieldGrowth: 18, userJitter: 8, compression: 0.016 },
+            medium: { topGrowMin: 3, topGrowRange: 10, surgeFloor: 8, surgeMult: 0.03, fieldBase: 250, fieldGrowth: 26, userJitter: 14, compression: 0.02 },
+            hard: { topGrowMin: 5, topGrowRange: 16, surgeFloor: 12, surgeMult: 0.045, fieldBase: 300, fieldGrowth: 34, userJitter: 20, compression: 0.024 }
+        };
+        const rankLadder = [
+            { name: 'Rookie', threshold: 0 },
+            { name: 'Pilot', threshold: 24 },
+            { name: 'Navigator', threshold: 48 },
+            { name: 'Architect', threshold: 90 },
+            { name: 'Commander', threshold: 140 },
+            { name: 'Overseer', threshold: 210 }
+        ];
+        const dailyChallenges = [
+            { name: 'Calm Orbit', spawnMultiplier: 1.16, scoreMultiplier: 1.02, hint: 'Debris is 16% slower today.' },
+            { name: 'Storm Orbit', spawnMultiplier: 0.84, scoreMultiplier: 1.35, hint: 'Debris is 16% faster, but score is boosted 35%.' },
+            { name: 'Steady Orbit', spawnMultiplier: 1.0, scoreMultiplier: 1.12, hint: 'Balanced threat with a 12% score boost.' },
+            { name: 'Precision Orbit', spawnMultiplier: 0.92, scoreMultiplier: 1.25, hint: 'Faster debris, high-value scoring window.' },
+            { name: 'Recovery Orbit', spawnMultiplier: 1.22, scoreMultiplier: 0.95, hint: 'Safer runs for preserving your streak.' }
+        ];
+        const unlockRules = [
+            { id: 'gold_orbit', label: 'Gold Orbit', check: (p) => p.bestSurvival >= 45 },
+            { id: 'neon_trail', label: 'Neon Trail', check: (p) => p.totalRuns >= 6 },
+            { id: 'stellar_core', label: 'Stellar Core', check: (p) => p.totalDistanceOrbited >= 90000 },
+            { id: 'streak_aura', label: 'Streak Aura', check: (p) => p.streak >= 5 }
+        ];
+        let playerProgress = null;
+        let dailyChallenge = dailyChallenges[0];
+
+        // Death animation state
+        let deathAnimation = {
+            active: false,
+            startTime: 0,
+            duration: 2500, // 2.5 seconds of death animation
+            reason: '',
+            shakeIntensity: 0,
+            slowMotion: false,
+            planetExploded: false
+        };
+
+        // Upgrades
+        const upgrades = {
+            heat: { level: 1, max: 5, cost: 1 },
+            gravity: { level: 1, max: 5, cost: 1 },
+            speed: { level: 1, max: 5, cost: 1 },
+            shield: { level: 0, max: 3, cost: 2 },
+            size: { level: 1, max: 3, cost: 1 },
+            luck: { level: 1, max: 3, cost: 1 }
+        };
+
+        let planet = {
+            angle: -Math.PI / 2,
+            radius: 200,
+            targetRadius: 200,
+            size: 12,
+            heat: 0,
+            gravity: 100,
+            maxRadius: 300,
+            minRadius: 60,
+            shieldActive: false,
+            shieldTime: 0,
+            deathX: 0,
+            deathY: 0
+        };
+
+        const planetConfigs = [
+            { name: 'Earth', color1: '#4488ff', color2: '#22aa66', sun: '#ffdd44' },
+            { name: 'Mars', color1: '#ff6644', color2: '#cc4422', sun: '#ffaa66' },
+            { name: 'Kepler', color1: '#aa66ff', color2: '#4488aa', sun: '#ff88aa' }
+        ];
+
+        function createDefaultProgress() {
+            return {
+                totalRuns: 0,
+                lifetimeOrbitTime: 0,
+                bestSurvival: 0,
+                bestScore: 0,
+                totalDistanceOrbited: 0,
+                streak: 0,
+                lastRunDay: '',
+                todayKey: '',
+                todayBest: 0,
+                playerName: '',
+                simTop5: [420, 360, 320, 280, 250],
+                lastSimRank: 0,
+                lastSimField: 0,
+                leaderboardPace: 'medium',
+                profileId: '',
+                consentSet: false,
+                analyticsAllowed: false,
+                crashAllowed: false,
+                pendingRunSync: [],
+                cloudTop5: [],
+                cloudTopEntries: [],
+                cloudRank: 0,
+                cloudField: 0,
+                unlocks: [],
+                lastUnlocks: []
+            };
+        }
+
+        function getDayKey(date = new Date()) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + d;
+        }
+
+        function dayDiff(fromDay, toDay) {
+            const from = new Date(fromDay + 'T00:00:00');
+            const to = new Date(toDay + 'T00:00:00');
+            return Math.round((to - from) / 86400000);
+        }
+
+        function formatDuration(totalSeconds) {
+            const seconds = Math.max(0, Math.floor(totalSeconds));
+            if (seconds < 60) return seconds + 's';
+            const mins = Math.floor(seconds / 60);
+            const rem = seconds % 60;
+            if (mins < 60) return mins + 'm ' + rem + 's';
+            const hours = Math.floor(mins / 60);
+            const remMins = mins % 60;
+            return hours + 'h ' + remMins + 'm';
+        }
+
+        function formatDistance(distanceValue) {
+            const km = Math.max(0, distanceValue) / 1000;
+            if (km >= 1000) return (km / 1000).toFixed(1) + 'M km';
+            if (km >= 10) return km.toFixed(0) + ' km';
+            return km.toFixed(1) + ' km';
+        }
+
+        function selectDailyChallenge(dayKey) {
+            let seed = 0;
+            for (let i = 0; i < dayKey.length; i++) seed += dayKey.charCodeAt(i) * (i + 1);
+            return dailyChallenges[seed % dailyChallenges.length];
+        }
+
+        function sanitizePlayerName(rawName) {
+            return String(rawName || '')
+                .replace(/[^a-zA-Z0-9 _-]/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 18);
+        }
+
+        function formatPaceLabel(paceKey) {
+            if (paceKey === 'easy') return 'Easy';
+            if (paceKey === 'hard') return 'Hard';
+            return 'Medium';
+        }
+
+        function normalizeLeaderboardEntries(rows) {
+            if (!Array.isArray(rows)) return [];
+            const seenKeys = new Set();
+            const normalized = rows.map((row, idx) => {
+                const profileId = String(row.profile_id || row.profileId || '');
+                const safeName = sanitizePlayerName(row.player_name || row.playerName || '');
+                const playerName = safeName || ('Pilot ' + (idx + 1));
+                const score = Math.max(0, Math.floor(Number(row.score || 0)));
+                const survivalSeconds = Math.max(0, Number(row.survival_seconds || row.survivalSeconds || 0));
+                return { profileId, playerName, score, survivalSeconds };
+            }).filter((entry) => {
+                const key = entry.profileId || (entry.playerName + ':' + entry.score);
+                if (seenKeys.has(key)) return false;
+                seenKeys.add(key);
+                return entry.score > 0;
+            });
+
+            normalized.sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                if (b.survivalSeconds !== a.survivalSeconds) return b.survivalSeconds - a.survivalSeconds;
+                return a.playerName.localeCompare(b.playerName);
+            });
+
+            return normalized.slice(0, 5);
+        }
+
+        function getSimLeaderboardEntries() {
+            const simScores = Array.isArray(playerProgress && playerProgress.simTop5) ? playerProgress.simTop5.slice(0, 5) : [];
+            return simScores.map((scoreValue, i) => ({
+                playerName: 'Sector AI ' + (i + 1),
+                score: Math.max(0, Math.floor(Number(scoreValue || 0))),
+                survivalSeconds: 0
+            }));
+        }
+
+        function renderLeaderboardFromProgress() {
+            if (!leaderboardTop5El || !leaderboardUserRankEl || !playerProgress) return;
+
+            const displayName = playerProgress.playerName || 'Pilot';
+            const cloudEntries = Array.isArray(playerProgress.cloudTopEntries) ? playerProgress.cloudTopEntries.slice(0, 5) : [];
+            const useCloudBoard = cloudEntries.length > 0;
+            const entries = useCloudBoard ? cloudEntries : getSimLeaderboardEntries();
+
+            leaderboardTop5El.style.whiteSpace = 'pre-line';
+            leaderboardTop5El.textContent = entries.length > 0
+                ? entries.map((entry, i) => (i + 1) + '. ' + entry.playerName + ' - ' + entry.score).join('\n')
+                : 'No scored runs yet';
+
+            if (useCloudBoard && playerProgress.cloudRank > 0 && playerProgress.cloudField > 0) {
+                leaderboardUserRankEl.textContent = displayName + ' is #' + playerProgress.cloudRank + ' of ' + playerProgress.cloudField;
+            } else {
+                const fallbackRank = Math.max(1, Number(playerProgress.lastSimRank || 1));
+                const fallbackField = Math.max(fallbackRank, Number(playerProgress.lastSimField || 1));
+                leaderboardUserRankEl.textContent = displayName + ' is #' + fallbackRank + ' of ' + fallbackField + ' (offline)';
+            }
+
+            if (leaderboardTitleEl) {
+                leaderboardTitleEl.textContent = useCloudBoard
+                    ? 'Global Top 5 (Real Players)'
+                    : ('Sector Top 5 (Offline Sim • ' + formatPaceLabel(playerProgress.leaderboardPace) + ' Pace)');
+            }
+        }
+
+        function setBackendStatus(text, ok = false) {
+            backendOnline = ok;
+            if (!backendStatusLineEl) return;
+            backendStatusLineEl.textContent = text;
+            backendStatusLineEl.style.color = ok ? 'rgba(120,255,185,0.75)' : 'rgba(255,255,255,0.56)';
+        }
+
+        async function backendRequest(path, method = 'GET', body = null, timeoutMs = 3500) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const headers = { 'Content-Type': 'application/json' };
+                if (BACKEND_API_KEY) headers['X-Orbit-Api-Key'] = BACKEND_API_KEY;
+                const res = await fetch(BACKEND_BASE + path, {
+                    method,
+                    headers,
+                    body: body ? JSON.stringify(body) : undefined,
+                    signal: controller.signal
+                });
+                const payload = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(payload.error || ('http_' + res.status));
+                setBackendStatus('Cloud sync: connected', true);
+                return payload;
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        async function pingBackend() {
+            try {
+                await backendRequest('/health', 'GET', null, 1800);
+            } catch (e) {
+                setBackendStatus('Cloud sync: offline fallback', false);
+            }
+        }
+
+        async function ensureCloudProfile() {
+            if (!playerProgress || !playerProgress.playerName) return null;
+            try {
+                const data = await backendRequest('/v1/profile/register', 'POST', {
+                    profileId: playerProgress.profileId || '',
+                    name: playerProgress.playerName,
+                    deviceId
+                });
+                if (data && data.profileId) {
+                    playerProgress.profileId = data.profileId;
+                    savePlayerData();
+                    return data.profileId;
+                }
+            } catch (e) {
+                setBackendStatus('Cloud sync: offline fallback', false);
+            }
+            return null;
+        }
+
+        async function syncConsentToCloud() {
+            if (!playerProgress || !playerProgress.profileId || !playerProgress.consentSet) return;
+            try {
+                await backendRequest('/v1/consent', 'POST', {
+                    profileId: playerProgress.profileId,
+                    analyticsAllowed: !!playerProgress.analyticsAllowed,
+                    crashAllowed: !!playerProgress.crashAllowed
+                });
+            } catch (e) {
+                setBackendStatus('Cloud sync: consent pending', false);
+            }
+        }
+
+        async function beginServerRunSession() {
+            if (!playerProgress || !playerProgress.profileId) return;
+            try {
+                const payload = await backendRequest('/v1/runs/start', 'POST', {
+                    profileId: playerProgress.profileId,
+                    challengeMultiplier: dailyChallenge ? dailyChallenge.scoreMultiplier : 1
+                });
+                activeServerSessionId = payload.sessionId || '';
+            } catch (e) {
+                activeServerSessionId = '';
+                setBackendStatus('Cloud sync: run session unavailable', false);
+            }
+        }
+
+        function queueRunForCloudSync(runPayload) {
+            if (!playerProgress) return;
+            if (!Array.isArray(playerProgress.pendingRunSync)) playerProgress.pendingRunSync = [];
+            playerProgress.pendingRunSync.push(runPayload);
+            if (playerProgress.pendingRunSync.length > 25) {
+                playerProgress.pendingRunSync = playerProgress.pendingRunSync.slice(-25);
+            }
+            savePlayerData();
+            syncQueuedRunsToCloud();
+        }
+
+        async function syncQueuedRunsToCloud() {
+            if (syncingQueuedRuns || !playerProgress || !playerProgress.profileId) return;
+            if (!Array.isArray(playerProgress.pendingRunSync) || playerProgress.pendingRunSync.length === 0) return;
+
+            syncingQueuedRuns = true;
+            try {
+                while (playerProgress.pendingRunSync.length > 0) {
+                    const run = playerProgress.pendingRunSync[0];
+                    if (!run.sessionId) {
+                        playerProgress.pendingRunSync.shift();
+                        continue;
+                    }
+                    const data = await backendRequest('/v1/runs/finish', 'POST', {
+                        profileId: playerProgress.profileId,
+                        sessionId: run.sessionId,
+                        survivalSeconds: run.survivalSeconds,
+                        planetReached: run.planetReached,
+                        difficulty: run.difficulty
+                    });
+                    if (data && data.leaderboard) {
+                        const top = normalizeLeaderboardEntries(data.leaderboard.top || []);
+                        playerProgress.cloudTopEntries = top;
+                        playerProgress.cloudTop5 = top.map((entry) => entry.score);
+                        playerProgress.cloudRank = Number(data.leaderboard.rank || 0);
+                        playerProgress.cloudField = Number(data.leaderboard.size || 0);
+                        playerProgress.bestScore = Math.max(playerProgress.bestScore, Number(data.leaderboard.bestScore || 0));
+                        renderLeaderboardFromProgress();
+                    }
+                    playerProgress.pendingRunSync.shift();
+                    savePlayerData();
+                }
+            } catch (e) {
+                setBackendStatus('Cloud sync: queued runs pending', false);
+            } finally {
+                syncingQueuedRuns = false;
+            }
+        }
+
+        async function fetchCloudProfileSummary() {
+            if (!playerProgress || !playerProgress.profileId) return;
+            const data = await backendRequest('/v1/profile/' + encodeURIComponent(playerProgress.profileId), 'GET', null, 2500);
+            const profile = data && data.profile ? data.profile : null;
+            if (!profile) return;
+
+            const cloudName = sanitizePlayerName(profile.name);
+            if (cloudName) playerProgress.playerName = cloudName;
+
+            const cloudRuns = Math.max(0, Number(profile.total_runs || profile.totalRuns || 0));
+            const cloudBestScore = Math.max(0, Number(profile.best_score || profile.bestScore || 0));
+            const cloudBestSurvival = Math.max(0, Math.floor(Number(profile.best_survival || profile.bestSurvival || 0)));
+
+            playerProgress.totalRuns = Math.max(playerProgress.totalRuns, cloudRuns);
+            playerProgress.bestScore = Math.max(playerProgress.bestScore, cloudBestScore);
+            playerProgress.bestSurvival = Math.max(playerProgress.bestSurvival, cloudBestSurvival);
+        }
+
+        async function fetchCloudLeaderboardTop(limit = 5) {
+            const data = await backendRequest('/v1/leaderboard/top?limit=' + Math.max(1, Math.min(50, limit)), 'GET', null, 2500);
+            const top = normalizeLeaderboardEntries(data && data.top ? data.top : []);
+            if (top.length > 0) {
+                playerProgress.cloudTopEntries = top;
+                playerProgress.cloudTop5 = top.map((entry) => entry.score);
+            }
+        }
+
+        async function fetchCloudLeaderboardProfileRank() {
+            if (!playerProgress || !playerProgress.profileId) return;
+            const data = await backendRequest('/v1/leaderboard/profile/' + encodeURIComponent(playerProgress.profileId), 'GET', null, 2500);
+            playerProgress.cloudRank = Math.max(0, Number(data.rank || 0));
+            playerProgress.cloudField = Math.max(0, Number(data.size || 0));
+            playerProgress.bestScore = Math.max(playerProgress.bestScore, Math.max(0, Number(data.bestScore || 0)));
+            playerProgress.bestSurvival = Math.max(playerProgress.bestSurvival, Math.max(0, Math.floor(Number(data.bestSurvival || 0))));
+        }
+
+        async function refreshCloudState() {
+            if (!playerProgress || !playerProgress.profileId) return;
+            try {
+                await fetchCloudProfileSummary();
+                await fetchCloudLeaderboardTop(5);
+                await fetchCloudLeaderboardProfileRank();
+                savePlayerData();
+                updateStartScreenProfileUI();
+                renderLeaderboardFromProgress();
+            } catch (e) {
+                setBackendStatus('Cloud sync: partial sync', false);
+            }
+        }
+
+        async function sendAnalyticsEvent(eventName, payload) {
+            if (!playerProgress || !playerProgress.profileId || !playerProgress.analyticsAllowed) return;
+            try {
+                await backendRequest('/v1/analytics/event', 'POST', {
+                    profileId: playerProgress.profileId,
+                    eventName,
+                    payload
+                }, 2500);
+            } catch (e) {}
+            if (typeof window.gtag === 'function') {
+                window.gtag('event', eventName, payload || {});
+            }
+        }
+
+        async function sendCrashReport(message, stack) {
+            if (!playerProgress || !playerProgress.profileId || !playerProgress.crashAllowed) return;
+            try {
+                await backendRequest('/v1/crash', 'POST', {
+                    profileId: playerProgress.profileId,
+                    message: String(message || 'unknown_error'),
+                    stack: String(stack || ''),
+                    appVersion: '1.0.0'
+                }, 2500);
+            } catch (e) {}
+            if (window.Sentry && typeof window.Sentry.captureException === 'function') {
+                const err = new Error(String(message || 'runtime_error'));
+                err.stack = String(stack || '');
+                window.Sentry.captureException(err);
+            }
+        }
+
+        function loadExternalScript(src) {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[data-src=\"' + src + '\"]');
+                if (existing) return resolve();
+                const script = document.createElement('script');
+                script.async = true;
+                script.src = src;
+                script.dataset.src = src;
+                script.onload = () => resolve();
+                script.onerror = () => reject(new Error('script_load_failed'));
+                document.head.appendChild(script);
+            });
+        }
+
+        async function initOptionalTelemetry() {
+            if (!playerProgress) return;
+            if (playerProgress.crashAllowed && runtimeConfig.sentryDsn && !window.Sentry) {
+                try {
+                    await loadExternalScript('https://browser.sentry-cdn.com/8.33.0/bundle.min.js');
+                    if (window.Sentry && typeof window.Sentry.init === 'function') {
+                        window.Sentry.init({ dsn: runtimeConfig.sentryDsn, release: 'orbital-defense@1.0.0' });
+                    }
+                } catch (e) {}
+            }
+            if (playerProgress.analyticsAllowed && runtimeConfig.firebaseMeasurementId && typeof window.gtag !== 'function') {
+                try {
+                    await loadExternalScript('https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(runtimeConfig.firebaseMeasurementId));
+                    window.dataLayer = window.dataLayer || [];
+                    window.gtag = function(){ window.dataLayer.push(arguments); };
+                    window.gtag('js', new Date());
+                    window.gtag('config', runtimeConfig.firebaseMeasurementId, { anonymize_ip: true });
+                } catch (e) {}
+            }
+        }
+
+        function getRankInfo(bestSeconds) {
+            let current = rankLadder[0];
+            let next = null;
+            for (let i = 0; i < rankLadder.length; i++) {
+                const rank = rankLadder[i];
+                if (bestSeconds >= rank.threshold) {
+                    current = rank;
+                    next = rankLadder[i + 1] || null;
+                }
+            }
+            const remaining = next ? Math.max(0, next.threshold - bestSeconds) : 0;
+            return { current, next, remaining };
+        }
+
+        function savePlayerData() {
+            try {
+                localStorage.setItem(SAVE_KEY, JSON.stringify(playerProgress));
+            } catch (e) {}
+        }
+
+        function loadPlayerData() {
+            const defaults = createDefaultProgress();
+            try {
+                const raw = localStorage.getItem(SAVE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    playerProgress = Object.assign({}, defaults, parsed);
+                } else {
+                    playerProgress = defaults;
+                }
+            } catch (e) {
+                playerProgress = defaults;
+            }
+
+            if (!Array.isArray(playerProgress.unlocks)) playerProgress.unlocks = [];
+            if (!Array.isArray(playerProgress.lastUnlocks)) playerProgress.lastUnlocks = [];
+            if (!Array.isArray(playerProgress.simTop5) || playerProgress.simTop5.length < 5) playerProgress.simTop5 = defaults.simTop5.slice();
+            if (!Array.isArray(playerProgress.pendingRunSync)) playerProgress.pendingRunSync = [];
+            if (!Array.isArray(playerProgress.cloudTop5)) playerProgress.cloudTop5 = [];
+            if (!Array.isArray(playerProgress.cloudTopEntries)) playerProgress.cloudTopEntries = [];
+            playerProgress.playerName = sanitizePlayerName(playerProgress.playerName);
+            if (!leaderboardPaceProfiles[playerProgress.leaderboardPace]) playerProgress.leaderboardPace = 'medium';
+            playerProgress.analyticsAllowed = !!playerProgress.analyticsAllowed;
+            playerProgress.crashAllowed = !!playerProgress.crashAllowed;
+            playerProgress.consentSet = !!playerProgress.consentSet;
+
+            const todayKey = getDayKey();
+            if (playerProgress.todayKey !== todayKey) {
+                playerProgress.todayKey = todayKey;
+                playerProgress.todayBest = 0;
+            }
+            dailyChallenge = selectDailyChallenge(todayKey);
+            savePlayerData();
+            updateStartScreenProfileUI();
+            renderLeaderboardFromProgress();
+            setBackendStatus('Cloud sync: checking...', false);
+            pingBackend();
+            initOptionalTelemetry();
+            ensureCloudProfile().then(async () => {
+                await syncConsentToCloud();
+                await syncQueuedRunsToCloud();
+                await refreshCloudState();
+            });
+        }
+
+        function evaluateUnlocks(progress) {
+            const unlockedNow = [];
+            unlockRules.forEach(rule => {
+                if (!progress.unlocks.includes(rule.id) && rule.check(progress)) {
+                    progress.unlocks.push(rule.id);
+                    unlockedNow.push(rule.label);
+                }
+            });
+            progress.lastUnlocks = unlockedNow;
+            return unlockedNow;
+        }
+
+        function updateSimLeaderboard(runScore) {
+            const pace = leaderboardPaceProfiles[playerProgress.leaderboardPace] || leaderboardPaceProfiles.medium;
+            let top = Array.isArray(playerProgress.simTop5) ? playerProgress.simTop5.slice(0, 5) : [420, 360, 320, 280, 250];
+            while (top.length < 5) {
+                const tail = top.length ? top[top.length - 1] : 220;
+                top.push(Math.max(60, tail - 30));
+            }
+
+            top = top.map((value, i) => Math.max(70, Math.floor(value + pace.topGrowMin + Math.random() * pace.topGrowRange + (5 - i))));
+
+            if (runScore >= top[4]) {
+                const surge = Math.max(pace.surgeFloor, Math.floor(runScore * pace.surgeMult));
+                top = top.map((value, i) => value + surge + (4 - i) * 2);
+            }
+
+            top.sort((a, b) => b - a);
+            for (let i = 1; i < top.length; i++) {
+                if (top[i] >= top[i - 1]) {
+                    top[i] = top[i - 1] - Math.max(4, Math.floor(top[i - 1] * pace.compression));
+                }
+            }
+            top = top.map((value) => Math.max(50, value));
+
+            const fieldSize = Math.max(150, Math.min(9999, pace.fieldBase + playerProgress.totalRuns * pace.fieldGrowth));
+            let userRank = 1;
+            if (runScore >= top[0]) {
+                userRank = 1 + Math.floor(Math.random() * 2);
+            } else if (runScore >= top[4]) {
+                userRank = 4 + Math.floor(Math.random() * 8);
+            } else {
+                const ratio = Math.max(0, Math.min(1, runScore / top[0]));
+                const percentile = 0.12 + ratio * 0.74;
+                userRank = Math.floor((1 - percentile) * fieldSize) + Math.floor((Math.random() - 0.5) * pace.userJitter);
+            }
+            userRank = Math.max(1, Math.min(fieldSize, userRank));
+
+            playerProgress.simTop5 = top;
+            playerProgress.lastSimRank = userRank;
+            playerProgress.lastSimField = fieldSize;
+        }
+
+        function commitRunProgress() {
+            if (!playerProgress) loadPlayerData();
+
+            const runSeconds = Math.floor(survivalTime);
+            const todayKey = getDayKey();
+
+            if (playerProgress.todayKey !== todayKey) {
+                playerProgress.todayKey = todayKey;
+                playerProgress.todayBest = 0;
+            }
+
+            if (playerProgress.lastRunDay !== todayKey) {
+                if (playerProgress.lastRunDay && dayDiff(playerProgress.lastRunDay, todayKey) === 1) {
+                    playerProgress.streak += 1;
+                } else {
+                    playerProgress.streak = 1;
+                }
+            }
+
+            playerProgress.lastRunDay = todayKey;
+            playerProgress.todayBest = Math.max(playerProgress.todayBest, runSeconds);
+            playerProgress.totalRuns += 1;
+            playerProgress.lifetimeOrbitTime += runSeconds;
+            playerProgress.bestSurvival = Math.max(playerProgress.bestSurvival, runSeconds);
+            playerProgress.bestScore = Math.max(playerProgress.bestScore, score);
+            playerProgress.totalDistanceOrbited += Math.floor(runOrbitDistance);
+            updateSimLeaderboard(score);
+
+            const unlockedNow = evaluateUnlocks(playerProgress);
+            dailyChallenge = selectDailyChallenge(todayKey);
+            savePlayerData();
+
+            queueRunForCloudSync({
+                sessionId: activeServerSessionId || '',
+                survivalSeconds: runSeconds,
+                planetReached: currentPlanet,
+                difficulty
+            });
+            activeServerSessionId = '';
+
+            return { runSeconds, unlockedNow };
+        }
+
+        function setRetentionDetailsVisible(visible) {
+            if (!retentionDetailsEl || !detailsToggleBtnEl) return;
+            retentionDetailsEl.style.display = visible ? 'block' : 'none';
+            detailsToggleBtnEl.textContent = visible ? 'Hide Details' : 'Show Details';
+        }
+
+        function updateStartScreenProfileUI() {
+            if (!playerProgress) return;
+            const hasName = !!playerProgress.playerName;
+            const paceKey = playerProgress.leaderboardPace || 'medium';
+            if (welcomeLineEl) {
+                welcomeLineEl.textContent = hasName
+                    ? ('Welcome back, ' + playerProgress.playerName)
+                    : 'Pilot profile required';
+            }
+            if (playerNameInputEl) {
+                if (hasName) {
+                    playerNameInputEl.value = playerProgress.playerName;
+                    playerNameInputEl.style.display = 'none';
+                } else {
+                    playerNameInputEl.style.display = 'block';
+                }
+            }
+            if (nameRequirementLineEl) {
+                nameRequirementLineEl.textContent = hasName
+                    ? 'Pilot profile saved. Cloud sync updates records when online.'
+                    : 'Enter your pilot name to launch.';
+                nameRequirementLineEl.style.color = hasName ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.72)';
+            }
+            if (firstMissionGuideEl) {
+                firstMissionGuideEl.style.display = playerProgress.totalRuns === 0 ? 'block' : 'none';
+            }
+            if (paceHintLineEl) {
+                const label = paceKey === 'easy' ? 'Leaderboard pace: Easy climb' : (paceKey === 'hard' ? 'Leaderboard pace: Hard climb' : 'Leaderboard pace: Medium climb');
+                paceHintLineEl.textContent = label;
+            }
+            paceButtons.forEach((btn) => {
+                const selected = btn.dataset.pace === paceKey;
+                btn.classList.toggle('selected', selected);
+            });
+            if (consentPanelEl) {
+                consentPanelEl.style.display = playerProgress.consentSet ? 'none' : 'block';
+            }
+            if (consentAnalyticsEl) consentAnalyticsEl.checked = !!playerProgress.analyticsAllowed;
+            if (consentCrashEl) consentCrashEl.checked = !!playerProgress.crashAllowed;
+        }
+
+        function pauseRuntime() {
+            if (hiddenAt) return;
+            hiddenAt = Date.now();
+            isHolding = false;
+            if (audioCtx && audioCtx.state === 'running') {
+                try { audioCtx.suspend(); } catch (e) {}
+            }
+        }
+
+        function resumeRuntime() {
+            if (!hiddenAt) return;
+            const delta = Date.now() - hiddenAt;
+            hiddenAt = 0;
+            if (gameState === 'playing') {
+                startTime += delta;
+                nextSpawnTime += delta;
+            }
+            if (deathAnimation.active) deathAnimation.startTime += delta;
+            if (audioCtx && audioCtx.state === 'suspended') {
+                try { audioCtx.resume(); } catch (e) {}
+            }
+        }
+
+        // Setup
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            planet.maxRadius = Math.min(canvas.width, canvas.height) * 0.4;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Stars
+        for (let i = 0; i < 150; i++) {
+            stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() * 1.5 + 0.5,
+                alpha: Math.random() * 0.5 + 0.2,
+                twinkle: Math.random() * Math.PI * 2
+            });
+        }
+
+        // Input
+        function handleStart(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (deathAnimation.active) return; // Block input during death
+            isHolding = true;
+            if (tutorialEl) tutorialEl.style.display = 'none';
+        }
+
+        function handleEnd(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            isHolding = false;
+        }
+
+        function bindInput() {
+            canvas.addEventListener('touchstart', handleStart, {passive: false});
+            canvas.addEventListener('touchend', handleEnd, {passive: false});
+            canvas.addEventListener('touchcancel', handleEnd, {passive: false});
+            canvas.addEventListener('mousedown', handleStart);
+            canvas.addEventListener('mouseup', handleEnd);
+            canvas.addEventListener('mouseleave', handleEnd);
+        }
+
+        // Debris
+        class Debris {
+            constructor(isBoss = false) {
+                this.isBoss = isBoss;
+                this.x = 0; this.y = 0; this.vx = 0; this.vy = 0;
+                this.size = 20; this.rotation = 0; this.rotSpeed = 0; this.health = 1;
+
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+
+                if (isBoss) {
+                    this.size = 70; this.health = 3;
+                    this.x = cx; this.y = -80; this.vx = 0; this.vy = 0.8;
+                } else {
+                    const rand = Math.random();
+                    let speed = 1.2;
+                    if (rand < 0.4) { this.shape = 'satellite'; this.size = 18; speed = 1.2; }
+                    else if (rand < 0.7) { this.shape = 'rocket'; this.size = 22; speed = 1.6; }
+                    else if (rand < 0.9) { this.shape = 'asteroid'; this.size = 28; speed = 0.9; }
+                    else { this.shape = 'panel'; this.size = 32; speed = 0.7; }
+
+                    const side = Math.floor(Math.random() * 4);
+                    switch(side) {
+                        case 0: this.x = Math.random() * canvas.width; this.y = -50; break;
+                        case 1: this.x = canvas.width + 50; this.y = Math.random() * canvas.height; break;
+                        case 2: this.x = Math.random() * canvas.width; this.y = canvas.height + 50; break;
+                        case 3: this.x = -50; this.y = Math.random() * canvas.height; break;
+                    }
+
+                    const angleToCenter = Math.atan2(cy - this.y, cx - this.x);
+                    const speedMult = 1 + (difficulty - 1) * 0.12;
+                    this.vx = Math.cos(angleToCenter) * speed * speedMult;
+                    this.vy = Math.sin(angleToCenter) * speed * speedMult;
+                }
+
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.025;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.rotation += this.rotSpeed;
+
+                if (this.isBoss) {
+                    const cx = canvas.width / 2;
+                    const cy = canvas.height / 2;
+                    const dist = Math.sqrt((this.x - cx)**2 + (this.y - cy)**2);
+                    if (dist < 120) {
+                        this.vx *= 0.98;
+                        this.vy *= 0.98;
+                        this.rotation += 0.008;
+                    }
+                }
+
+                if (this.x < -200 || this.x > canvas.width + 200 || 
+                    this.y < -200 || this.y > canvas.height + 200) return false;
+                return true;
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+
+                if (this.isBoss) {
+                    ctx.fillStyle = '#445';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 25, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#f44';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 45, 12, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 12, 45, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = '#f00';
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#f00';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                    for (let i = 0; i < this.health; i++) {
+                        ctx.fillStyle = '#f00';
+                        ctx.fillRect(-15 + i * 12, -38, 8, 3);
+                    }
+                } else if (this.shape === 'satellite') {
+                    ctx.fillStyle = '#778';
+                    ctx.fillRect(-6, -6, 12, 12);
+                    ctx.fillStyle = '#24a';
+                    ctx.fillRect(-14, -4, 8, 8);
+                    ctx.fillRect(6, -4, 8, 8);
+                    ctx.strokeStyle = '#aaa';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -6);
+                    ctx.lineTo(0, -12);
+                    ctx.stroke();
+                } else if (this.shape === 'rocket') {
+                    ctx.fillStyle = '#ddd';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, 6, 15, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#f44';
+                    ctx.beginPath();
+                    ctx.moveTo(0, -15);
+                    ctx.lineTo(-5, -6);
+                    ctx.lineTo(5, -6);
+                    ctx.fill();
+                    ctx.fillStyle = '#a44';
+                    ctx.beginPath();
+                    ctx.moveTo(-6, 8);
+                    ctx.lineTo(-10, 15);
+                    ctx.lineTo(-6, 12);
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.moveTo(6, 8);
+                    ctx.lineTo(10, 15);
+                    ctx.lineTo(6, 12);
+                    ctx.fill();
+                } else if (this.shape === 'asteroid') {
+                    ctx.fillStyle = '#543';
+                    ctx.strokeStyle = '#765';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        const r = this.size * (0.7 + Math.sin(i * 4) * 0.3);
+                        const x = Math.cos(angle) * r;
+                        const y = Math.sin(angle) * r;
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#13a';
+                    ctx.fillRect(-18, -10, 36, 20);
+                    ctx.strokeStyle = '#36c';
+                    ctx.lineWidth = 1;
+                    for (let i = -12; i <= 12; i += 8) {
+                        ctx.beginPath();
+                        ctx.moveTo(i, -10);
+                        ctx.lineTo(i, 10);
+                        ctx.stroke();
+                    }
+                    ctx.strokeStyle = '#889';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-18, -10, 36, 20);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color, speed, life = 1, size = null) {
+                this.x = x;
+                this.y = y;
+                const angle = Math.random() * Math.PI * 2;
+                const vel = Math.random() * speed;
+                this.vx = Math.cos(angle) * vel;
+                this.vy = Math.sin(angle) * vel;
+                this.life = life;
+                this.decay = 0.012 + Math.random() * 0.015;
+                this.color = color;
+                this.size = size || (Math.random() * 3 + 1);
+                this.grow = false;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                if (this.grow) this.size *= 1.02;
+                else this.size *= 0.97;
+                return this.life > 0;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        // Spawning
+        function spawnDebris() {
+            if (gameState !== 'playing' || deathAnimation.active) return;
+
+            const now = Date.now();
+            if (now < nextSpawnTime) return;
+
+            survivalTime = (now - startTime) / 1000;
+            difficulty = 1 + Math.floor(survivalTime / 15);
+            if (difficultyLevel) difficultyLevel.textContent = difficulty;
+
+            const bossTime = 40 * currentPlanet;
+            if (survivalTime > bossTime && !bossSpawned) {
+                bossSpawned = true;
+                debris.push(new Debris(true));
+                if (bossWarning) {
+                    bossWarning.style.display = 'block';
+                    playTone(400, 0.4, 'sawtooth', 0.2);
+                    setTimeout(() => { if (bossWarning) bossWarning.style.display = 'none'; }, 2500);
+                }
+                return;
+            }
+
+            const baseInterval = 1800;
+            const minInterval = 500;
+            const challengeSpawnMult = dailyChallenge ? dailyChallenge.spawnMultiplier : 1;
+            const interval = Math.max(minInterval, baseInterval - (difficulty - 1) * 120) * challengeSpawnMult;
+
+            const count = difficulty >= 5 ? 2 : 1;
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    if (gameState === 'playing' && !deathAnimation.active) debris.push(new Debris());
+                }, i * 150);
+            }
+
+            nextSpawnTime = now + interval;
+        }
+
+        // Upgrade system
+        function showUpgradeScreen() {
+            gameState = 'upgrade';
+            if (upgradePanel) upgradePanel.style.display = 'block';
+            upgradePoints += 2 + Math.floor(survivalTime / 25);
+            if (upgradePointsEl) upgradePointsEl.textContent = upgradePoints + ' Points';
+            updateUpgradeButtons();
+            playUpgrade();
+        }
+
+        function updateUpgradeButtons() {
+            Object.keys(upgrades).forEach(key => {
+                const upg = upgrades[key];
+                const btn = document.getElementById('upg' + key.charAt(0).toUpperCase() + key.slice(1));
+                if (!btn) return;
+                const levelEl = btn.querySelector('.level');
+                if (levelEl) levelEl.textContent = 'Lvl ' + upg.level + '/' + upg.max;
+
+                if (upg.level >= upg.max || upgradePoints < upg.cost) {
+                    btn.classList.add('disabled');
+                } else {
+                    btn.classList.remove('disabled');
+                }
+            });
+        }
+
+        function applyUpgrade(type) {
+            const upg = upgrades[type];
+            if (!upg || upg.level >= upg.max || upgradePoints < upg.cost) return;
+
+            upgradePoints -= upg.cost;
+            upg.level++;
+            upg.cost = Math.floor(upg.cost * 1.5);
+
+            if (upgradePointsEl) upgradePointsEl.textContent = upgradePoints + ' Points';
+            updateUpgradeButtons();
+            playTone(1000, 0.1, 'sine', 0.1);
+
+            if (type === 'size') {
+                planet.size = Math.max(8, 12 - (upgrades.size.level - 1) * 2);
+            }
+        }
+
+        ['heat', 'gravity', 'speed', 'shield', 'size', 'luck'].forEach(type => {
+            const btn = document.getElementById('upg' + type.charAt(0).toUpperCase() + type.slice(1));
+            if (btn) {
+                if (window.PointerEvent) {
+                    btn.addEventListener('pointerup', (e) => { e.preventDefault(); applyUpgrade(type); });
+                } else {
+                    btn.addEventListener('click', () => applyUpgrade(type));
+                    btn.addEventListener('touchstart', (e) => { e.preventDefault(); applyUpgrade(type); });
+                }
+            }
+        });
+
+        function nextPlanet() {
+            if (currentPlanet >= totalPlanets) {
+                showVictory();
+                return;
+            }
+
+            currentPlanet++;
+            if (upgradePanel) upgradePanel.style.display = 'none';
+            resetPlanet();
+            gameState = 'playing';
+            startTime = Date.now();
+            nextSpawnTime = Date.now() + 1000;
+            bossSpawned = false;
+
+            if (planetIndicator) planetIndicator.textContent = 'Planet ' + currentPlanet + ' of ' + totalPlanets;
+            updatePlanetDots();
+        }
+
+        function updatePlanetDots() {
+            const dots = document.querySelectorAll('.planet-dot');
+            dots.forEach((dot, i) => {
+                dot.classList.remove('saved', 'current');
+                if (i < currentPlanet - 1) dot.classList.add('saved');
+                else if (i === currentPlanet - 1) dot.classList.add('current');
+            });
+        }
+
+        function showVictory() {
+            gameState = 'victory';
+            if (victoryScreen) victoryScreen.style.display = 'flex';
+            const vs = document.getElementById('victoryScore');
+            if (vs) vs.textContent = 'Score: ' + score;
+            playTone(880, 0.3, 'sine', 0.2);
+            setTimeout(() => playTone(1100, 0.3, 'sine', 0.2), 150);
+        }
+
+        function resetPlanet() {
+            planet.angle = -Math.PI / 2;
+            planet.radius = 200;
+            planet.targetRadius = 200;
+            planet.heat = 0;
+            planet.gravity = 100;
+            planet.shieldTime = 0;
+            debris = [];
+            particles = [];
+            isHolding = false;
+            difficulty = 1;
+            survivalTime = 0;
+        }
+
+        function fullReset() {
+            currentPlanet = 1;
+            score = 0;
+            upgradePoints = 0;
+            runOrbitDistance = 0;
+            runProgressCommitted = false;
+            Object.keys(upgrades).forEach(key => {
+                upgrades[key].level = key === 'shield' ? 0 : 1;
+                upgrades[key].cost = key === 'shield' ? 2 : 1;
+            });
+            planet.size = 12;
+            planet.shieldActive = false;
+            resetPlanet();
+            updatePlanetDots();
+        }
+
+        async function startGame() {
+            initAudio();
+            if (!playerProgress) loadPlayerData();
+            const enteredName = sanitizePlayerName(playerNameInputEl ? playerNameInputEl.value : '');
+            if (!playerProgress.playerName) {
+                if (!enteredName) {
+                    if (nameRequirementLineEl) {
+                        nameRequirementLineEl.textContent = 'Enter your pilot name first.';
+                        nameRequirementLineEl.style.color = '#ffd36a';
+                    }
+                    if (playerNameInputEl) playerNameInputEl.focus();
+                    return;
+                }
+                playerProgress.playerName = enteredName;
+                savePlayerData();
+                updateStartScreenProfileUI();
+            }
+            if (!playerProgress.consentSet) {
+                if (nameRequirementLineEl) {
+                    nameRequirementLineEl.textContent = 'Choose privacy settings first.';
+                    nameRequirementLineEl.style.color = '#ffd36a';
+                }
+                if (consentPanelEl) consentPanelEl.style.display = 'block';
+                return;
+            }
+            if (nameRequirementLineEl) {
+                nameRequirementLineEl.textContent = 'Pilot profile saved. Cloud sync updates records when online.';
+                nameRequirementLineEl.style.color = 'rgba(255,255,255,0.5)';
+            }
+            await ensureCloudProfile();
+            refreshCloudState();
+            hiddenAt = 0;
+            gameState = 'playing';
+            if (startScreen) startScreen.style.display = 'none';
+            if (tutorialEl) tutorialEl.style.display = 'block';
+            startTime = Date.now();
+            nextSpawnTime = Date.now() + 1500;
+            fullReset();
+            bindInput();
+            if (planetIndicator) planetIndicator.textContent = 'Planet ' + currentPlanet + ' of ' + totalPlanets;
+            playTone(600, 0.2, 'sine', 0.15);
+            sendAnalyticsEvent('run_start', { planet: currentPlanet, pace: playerProgress.leaderboardPace });
+            beginServerRunSession();
+        }
+
+        // DEATH ANIMATION - New function
+        function triggerDeath(reason) {
+            if (deathAnimation.active) return; // Prevent double-trigger
+
+            deathAnimation.active = true;
+            deathAnimation.startTime = Date.now();
+            deathAnimation.reason = reason;
+            deathAnimation.planetExploded = false;
+
+            // Store death position
+            const cx = canvas.width / 2;
+            const cy = canvas.height / 2;
+            planet.deathX = cx + Math.cos(planet.angle) * planet.radius;
+            planet.deathY = cy + Math.sin(planet.angle) * planet.radius;
+
+            // Play explosion sound
+            playExplosion();
+
+            // Create initial explosion particles
+            createExplosion(planet.deathX, planet.deathY, 30);
+        }
+
+        function createExplosion(x, y, count) {
+            const colors = ['#ff4400', '#ff8800', '#ffaa00', '#ff0000', '#ffffff'];
+            for (let i = 0; i < count; i++) {
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const particle = new Particle(x, y, color, 3 + Math.random() * 4, 1.5 + Math.random() * 0.5, 2 + Math.random() * 4);
+                particle.grow = true;
+                particles.push(particle);
+            }
+            // Shockwave particle
+            const shockwave = new Particle(x, y, 'rgba(255, 200, 100, 0.5)', 0, 0.8, 5);
+            shockwave.grow = true;
+            shockwave.decay = 0.02;
+            particles.push(shockwave);
+        }
+
+        function updateDeathAnimation() {
+            if (!deathAnimation.active) return;
+
+            const now = Date.now();
+            const elapsed = now - deathAnimation.startTime;
+            const progress = elapsed / deathAnimation.duration;
+
+            // Screen shake intensity based on time
+            if (progress < 0.3) {
+                deathAnimation.shakeIntensity = 15 * (1 - progress / 0.3);
+            } else {
+                deathAnimation.shakeIntensity = 0;
+            }
+
+            // Continue spawning explosion particles
+            if (progress < 0.5 && Math.random() < 0.3) {
+                createExplosion(
+                    planet.deathX + (Math.random() - 0.5) * 40,
+                    planet.deathY + (Math.random() - 0.5) * 40,
+                    5
+                );
+            }
+
+            // Slow motion debris
+            debris.forEach(d => {
+                d.x += d.vx * 0.3;
+                d.y += d.vy * 0.3;
+                d.rotation += d.rotSpeed * 0.5;
+            });
+
+            // End animation and show game over
+            if (elapsed >= deathAnimation.duration) {
+                deathAnimation.active = false;
+                showGameOver();
+            }
+        }
+
+        function showGameOver() {
+            gameState = 'gameover';
+            const timePoints = Math.floor(survivalTime * 10);
+            const planetBonus = Math.max(0, currentPlanet - 1) * 500;
+            const challengeMult = dailyChallenge ? dailyChallenge.scoreMultiplier : 1;
+            const rawPoints = timePoints + planetBonus;
+            const computedScore = Math.floor(rawPoints * challengeMult);
+            score = computedScore;
+            const runSummary = runProgressCommitted ? { runSeconds: Math.floor(survivalTime), unlockedNow: [] } : commitRunProgress();
+            runProgressCommitted = true;
+            const rankInfo = getRankInfo(playerProgress.bestSurvival);
+            const currentThreshold = rankInfo.current.threshold;
+            const nextThreshold = rankInfo.next ? rankInfo.next.threshold : rankInfo.current.threshold;
+            const tierSpan = Math.max(1, nextThreshold - currentThreshold);
+            const tierValue = Math.max(0, playerProgress.bestSurvival - currentThreshold);
+            const tierPct = Math.min(100, Math.floor((tierValue / tierSpan) * 100));
+            const avgRunSeconds = playerProgress.totalRuns > 0 ? playerProgress.lifetimeOrbitTime / playerProgress.totalRuns : 0;
+            const runDistanceKm = (Math.floor(runOrbitDistance) / 1000).toFixed(1);
+            const displayName = playerProgress.playerName || 'Pilot';
+
+            if (gameOverScreen) gameOverScreen.style.display = 'flex';
+            if (finalScoreEl) finalScoreEl.textContent = Math.floor(survivalTime) + 's on Planet ' + currentPlanet;
+            if (deathReasonEl) deathReasonEl.textContent = deathAnimation.reason;
+            if (tutorialEl) tutorialEl.style.display = 'none';
+            if (playerCalloutEl) {
+                if (rankInfo.next) {
+                    playerCalloutEl.textContent = displayName + ', you need ' + rankInfo.remaining + 's more to reach ' + rankInfo.next.name + '.';
+                } else {
+                    playerCalloutEl.textContent = displayName + ', you reached max rank. Keep pushing your best score.';
+                }
+            }
+
+            if (retentionTimeEl) retentionTimeEl.textContent = Math.floor(survivalTime) + 's';
+            if (retentionPlanetsEl) retentionPlanetsEl.textContent = (currentPlanet - 1) + '/' + totalPlanets;
+            if (retentionDifficultyEl) retentionDifficultyEl.textContent = difficulty;
+            if (retentionScoreEl) retentionScoreEl.textContent = computedScore;
+            if (scoreMathLineEl) scoreMathLineEl.textContent = 'Score = (Time ' + timePoints + ' + Planet ' + planetBonus + ') x Challenge ' + challengeMult.toFixed(2) + ' = ' + computedScore;
+            if (rankMathLineEl) {
+                if (rankInfo.next) rankMathLineEl.textContent = 'Rank progress: ' + tierValue + '/' + tierSpan + 's (' + tierPct + '%) toward ' + rankInfo.next.name;
+                else rankMathLineEl.textContent = 'Rank progress: max tier achieved';
+            }
+            if (lifetimeMathLineEl) lifetimeMathLineEl.textContent = 'Run distance ' + runDistanceKm + ' km • Avg run ' + formatDuration(avgRunSeconds);
+
+            if (retentionBadgesEl) {
+                retentionBadgesEl.innerHTML = '';
+                const badges = [];
+                if (survivalTime > 30) badges.push('🔥 Survivor');
+                if (survivalTime > 60) badges.push('⭐ Veteran');
+                if (difficulty >= 5) badges.push('⚡ High Threat');
+                if (currentPlanet > 1) badges.push('🌍 Multi-Planet');
+                if (badges.length === 0) badges.push('🚀 Rookie');
+
+                badges.forEach(badge => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'background: rgba(100,200,255,0.2); border: 1px solid rgba(100,200,255,0.4); border-radius: 15px; padding: 5px 12px; font-size: 10px; color: #64c8ff;';
+                    div.textContent = badge;
+                    retentionBadgesEl.appendChild(div);
+                });
+            }
+
+            if (rankCurrentEl) rankCurrentEl.textContent = 'Rank: ' + rankInfo.current.name;
+            if (rankNextEl) {
+                if (rankInfo.next) {
+                    rankNextEl.textContent = 'Next Rank: ' + rankInfo.next.name + ' (' + rankInfo.remaining + 's remaining)';
+                } else {
+                    rankNextEl.textContent = 'Next Rank: Max rank achieved';
+                }
+            }
+            if (streakLineEl) streakLineEl.textContent = 'Day ' + playerProgress.streak + ' Streak - Don\'t lose it.';
+            if (todayRecordLineEl) todayRecordLineEl.textContent = playerProgress.todayBest + 's';
+            if (dailyChallengeLineEl && dailyChallenge) {
+                const scorePct = Math.round((dailyChallenge.scoreMultiplier - 1) * 100);
+                const speedPct = Math.abs(Math.round((1 - dailyChallenge.spawnMultiplier) * 100));
+                const speedLabel = dailyChallenge.spawnMultiplier < 1 ? '+' + speedPct + '% speed' : '-' + speedPct + '% speed';
+                const scoreLabel = (scorePct >= 0 ? '+' : '') + scorePct + '% score';
+                dailyChallengeLineEl.textContent = 'Challenge: ' + dailyChallenge.name + ' (' + scoreLabel + ', ' + speedLabel + ')';
+            }
+            if (dailyChallengeDetailLineEl && dailyChallenge) dailyChallengeDetailLineEl.textContent = 'Daily Challenge: ' + dailyChallenge.name + ' - ' + dailyChallenge.hint;
+
+            if (lifetimeRunsEl) lifetimeRunsEl.textContent = String(playerProgress.totalRuns);
+            if (lifetimeTimeEl) lifetimeTimeEl.textContent = formatDuration(playerProgress.lifetimeOrbitTime);
+            if (lifetimeBestEl) lifetimeBestEl.textContent = playerProgress.bestSurvival + 's';
+            if (lifetimeDistanceEl) lifetimeDistanceEl.textContent = formatDistance(playerProgress.totalDistanceOrbited);
+            if (bestScoreLineEl) bestScoreLineEl.textContent = 'Best Score Ever: ' + playerProgress.bestScore;
+
+            if (unlockLineEl) {
+                if (runSummary.unlockedNow.length > 0) {
+                    unlockLineEl.style.display = 'block';
+                    unlockLineEl.textContent = 'Unlocked: ' + runSummary.unlockedNow.join(', ');
+                } else {
+                    unlockLineEl.style.display = 'none';
+                }
+            }
+            renderLeaderboardFromProgress();
+            refreshCloudState();
+
+            setRetentionDetailsVisible(false);
+            sendAnalyticsEvent('run_finish', { score: computedScore, survival: Math.floor(survivalTime), planet: currentPlanet });
+        }
+
+        function endGame(reason) {
+            triggerDeath(reason);
+        }
+
+        function restart() {
+            deathAnimation.active = false;
+            gameState = 'playing';
+            hiddenAt = 0;
+            if (gameOverScreen) gameOverScreen.style.display = 'none';
+            if (victoryScreen) victoryScreen.style.display = 'none';
+            if (tutorialEl) tutorialEl.style.display = 'block';
+            fullReset();
+            startTime = Date.now();
+            nextSpawnTime = Date.now() + 1500;
+        }
+
+        function bindBtn(btn, cb) {
+            if (!btn) return;
+            let lastTap = 0;
+            const handler = (e) => {
+                if (e) e.preventDefault();
+                const now = Date.now();
+                if (now - lastTap < 240) return;
+                lastTap = now;
+                cb();
+            };
+            if (window.PointerEvent) {
+                btn.addEventListener('pointerup', handler);
+            } else {
+                btn.addEventListener('click', handler);
+                btn.addEventListener('touchstart', handler);
+            }
+            btn.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    cb();
+                }
+            });
+        }
+
+        bindBtn(document.getElementById('startBtn'), startGame);
+        bindBtn(document.getElementById('restartBtn'), restart);
+        bindBtn(document.getElementById('victoryRestart'), restart);
+        bindBtn(document.getElementById('continueBtn'), nextPlanet);
+        paceButtons.forEach((btn) => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!playerProgress) loadPlayerData();
+                const pace = btn.dataset.pace;
+                if (!leaderboardPaceProfiles[pace]) return;
+                playerProgress.leaderboardPace = pace;
+                savePlayerData();
+                updateStartScreenProfileUI();
+                sendAnalyticsEvent('pace_changed', { pace });
+            });
+        });
+        if (consentSaveBtnEl) {
+            consentSaveBtnEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (!playerProgress) loadPlayerData();
+                playerProgress.analyticsAllowed = !!(consentAnalyticsEl && consentAnalyticsEl.checked);
+                playerProgress.crashAllowed = !!(consentCrashEl && consentCrashEl.checked);
+                playerProgress.consentSet = true;
+                savePlayerData();
+                updateStartScreenProfileUI();
+                syncConsentToCloud();
+                initOptionalTelemetry();
+                sendAnalyticsEvent('consent_updated', {
+                    analyticsAllowed: playerProgress.analyticsAllowed,
+                    crashAllowed: playerProgress.crashAllowed
+                });
+            });
+        }
+        if (detailsToggleBtnEl) {
+            detailsToggleBtnEl.addEventListener('click', (e) => {
+                e.preventDefault();
+                const isOpen = retentionDetailsEl && retentionDetailsEl.style.display !== 'none';
+                setRetentionDetailsVisible(!isOpen);
+            });
+        }
+
+        window.addEventListener('error', (event) => {
+            const message = event && event.message ? event.message : 'runtime_error';
+            const stack = event && event.error && event.error.stack ? event.error.stack : '';
+            sendCrashReport(message, stack);
+        });
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event && event.reason ? String(event.reason) : 'unhandled_rejection';
+            sendCrashReport(reason, '');
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                pauseRuntime();
+                savePlayerData();
+                syncQueuedRunsToCloud();
+            } else {
+                resumeRuntime();
+            }
+        });
+        window.addEventListener('blur', pauseRuntime);
+        window.addEventListener('focus', resumeRuntime);
+        window.addEventListener('pagehide', () => {
+            savePlayerData();
+            syncQueuedRunsToCloud();
+        });
+
+        // Main loop
+        function update() {
+            try {
+                // Handle death animation
+                if (deathAnimation.active) {
+                    updateDeathAnimation();
+                    return;
+                }
+
+                if (gameState === 'upgrade') return;
+                if (gameState !== 'playing') return;
+
+                const now = Date.now();
+                survivalTime = (now - startTime) / 1000;
+                const baseScore = Math.floor(survivalTime * 10) + (currentPlanet - 1) * 500;
+                const scoreMult = dailyChallenge ? dailyChallenge.scoreMultiplier : 1;
+                score = Math.floor(baseScore * scoreMult);
+                if (scoreEl) scoreEl.textContent = score;
+
+                spawnDebris();
+
+                // Physics
+                const speedMult = 1 + (upgrades.speed.level - 1) * 0.15;
+                if (isHolding) {
+                    planet.targetRadius -= 2.5 * speedMult;
+                    if (planet.targetRadius < planet.minRadius) planet.targetRadius = planet.minRadius;
+                } else {
+                    planet.targetRadius += 1 * speedMult;
+                    if (planet.targetRadius > planet.maxRadius) planet.targetRadius = planet.maxRadius;
+                }
+                planet.radius += (planet.targetRadius - planet.radius) * 0.08;
+
+                // Heat/Gravity
+                const heatResist = 1 - (upgrades.heat.level - 1) * 0.12;
+                const gravResist = 1 - (upgrades.gravity.level - 1) * 0.12;
+                const optimal = planet.maxRadius * 0.5;
+                const hc = 1 + Math.min(0.4, Math.max(0, (difficulty - 1) * 0.06));
+
+                if (planet.radius < optimal * 0.6) {
+                    planet.heat += 0.6 * heatResist * hc;
+                } else if (planet.radius < optimal * 0.8) {
+                    planet.heat += 0.25 * heatResist * hc;
+                } else {
+                    planet.heat -= 0.4;
+                }
+
+                if (planet.radius > optimal * 1.4) {
+                    planet.gravity -= 0.25 * gravResist * hc;
+                } else if (planet.radius > optimal * 1.2) {
+                    planet.gravity -= 0.08 * gravResist * hc;
+                } else {
+                    planet.gravity += 0.2;
+                }
+
+                planet.heat = Math.max(0, Math.min(100, planet.heat));
+                planet.gravity = Math.max(0, Math.min(100, planet.gravity));
+
+                if ((planet.heat > 80 || planet.gravity < 20) && Math.random() < 0.02) {
+                    playAlert();
+                }
+
+                if (planet.heat >= 100) { endGame('BURNED UP IN STELLAR FIRE'); return; }
+                if (planet.gravity <= 0) { endGame('LOST TO THE VOID'); return; }
+
+                // Shield regen
+                if (upgrades.shield.level > 0 && planet.shieldTime <= 0 && Math.random() < 0.0008) {
+                    planet.shieldActive = true;
+                }
+                if (planet.shieldTime > 0) planet.shieldTime--;
+
+                // UI
+                if (heatFill) heatFill.style.width = planet.heat + '%';
+                if (gravityFill) gravityFill.style.width = planet.gravity + '%';
+
+                // Orbit
+                const orbitStep = 0.018 * (180 / planet.radius);
+                planet.angle += orbitStep;
+                runOrbitDistance += Math.abs(orbitStep * planet.radius);
+
+                // Particles
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const px = cx + Math.cos(planet.angle) * planet.radius;
+                const py = cy + Math.sin(planet.angle) * planet.radius;
+
+                if (Math.random() < 0.25) {
+                    const engAngle = planet.angle + Math.PI;
+                    const ex = px + Math.cos(engAngle) * 10;
+                    const ey = py + Math.sin(engAngle) * 10;
+                    const col = planet.heat > 60 ? '#f64' : '#6cf';
+                    particles.push(new Particle(ex, ey, col, 1.2, 0.6));
+                }
+
+                particles = particles.filter(p => p.update());
+
+                // Collision
+                debris = debris.filter(d => {
+                    if (!d.update()) return false;
+
+                    const dx = d.x - px;
+                    const dy = d.y - py;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist < d.size + planet.size - 2) {
+                        if (d.isBoss) {
+                            if (planet.shieldActive) {
+                                planet.shieldActive = false;
+                                planet.shieldTime = 360;
+                                d.health--;
+                                if (d.health <= 0) {
+                                    for (let i = 0; i < 25; i++) particles.push(new Particle(d.x, d.y, '#f44', 5, 1.8));
+                                    showUpgradeScreen();
+                                    return false;
+                                }
+                                return true;
+                            } else {
+                                endGame('DESTROYED BY ORBITAL STATION');
+                                return false;
+                            }
+                        } else if (planet.shieldActive) {
+                            planet.shieldActive = false;
+                            planet.shieldTime = 360;
+                            for (let i = 0; i < 8; i++) particles.push(new Particle(d.x, d.y, '#6cf', 3, 0.8));
+                            return false;
+                        } else {
+                            endGame('COLLISION WITH ' + (d.shape || 'DEBRIS').toUpperCase());
+                            return false;
+                        }
+                    }
+                    return true;
+                });
+
+            } catch(e) { console.log('Update error:', e); }
+        }
+
+        function draw() {
+            try {
+                // Screen shake during death
+                let shakeX = 0, shakeY = 0;
+                if (deathAnimation.active && deathAnimation.shakeIntensity > 0) {
+                    shakeX = (Math.random() - 0.5) * deathAnimation.shakeIntensity;
+                    shakeY = (Math.random() - 0.5) * deathAnimation.shakeIntensity;
+                }
+
+                ctx.save();
+                ctx.translate(shakeX, shakeY);
+
+                // Clear
+                ctx.fillStyle = '#050508';
+                ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+
+                const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, 0, canvas.width/2, canvas.height/2, canvas.width);
+                grad.addColorStop(0, '#1a1510');
+                grad.addColorStop(0.5, '#0a0a0f');
+                grad.addColorStop(1, '#000');
+                ctx.fillStyle = grad;
+                ctx.fillRect(-50, -50, canvas.width + 100, canvas.height + 100);
+
+                const cx = canvas.width / 2;
+                const cy = canvas.height / 2;
+                const config = planetConfigs[currentPlanet - 1] || planetConfigs[0];
+
+                // Stars
+                stars.forEach(star => {
+                    star.twinkle += 0.02;
+                    ctx.globalAlpha = Math.max(0.1, star.alpha + Math.sin(star.twinkle) * 0.2);
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+
+                if (gameState === 'playing' || gameState === 'upgrade' || deathAnimation.active) {
+                    // Sun
+                    ctx.save();
+                    ctx.translate(cx, cy);
+                    const corona = ctx.createRadialGradient(0, 0, 20, 0, 0, 110);
+                    corona.addColorStop(0, 'rgba(255, 200, 100, 0.8)');
+                    corona.addColorStop(0.3, 'rgba(255, 150, 50, 0.4)');
+                    corona.addColorStop(1, 'rgba(255, 100, 0, 0)');
+                    ctx.fillStyle = corona;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 110, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = config.sun;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 22, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+
+                    // Orbit path (only if not dead)
+                    if (!deathAnimation.active) {
+                        ctx.strokeStyle = 'rgba(100, 200, 255, 0.08)';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([4, 4]);
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, planet.radius, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                    }
+
+                    // Debris
+                    debris.forEach(d => d.draw(ctx));
+
+                    // Planet (don't draw if exploded in death animation)
+                    if (!deathAnimation.active || deathAnimation.startTime > Date.now() - 200) {
+                        const px = cx + Math.cos(planet.angle) * planet.radius;
+                        const py = cy + Math.sin(planet.angle) * planet.radius;
+
+                        ctx.save();
+                        ctx.translate(px, py);
+
+                        if (planet.shieldActive) {
+                            ctx.strokeStyle = 'rgba(100, 200, 255, 0.5)';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.arc(0, 0, planet.size + 10, 0, Math.PI * 2);
+                            ctx.stroke();
+                            ctx.fillStyle = 'rgba(100, 200, 255, 0.08)';
+                            ctx.fill();
+                        }
+
+                        if (planet.heat > 70 || planet.gravity < 20) {
+                            ctx.shadowBlur = 20;
+                            ctx.shadowColor = planet.heat > 70 ? '#f40' : '#f4f';
+                        }
+
+                        const pGrad = ctx.createRadialGradient(-3, -3, 0, 0, 0, planet.size);
+                        if (planet.heat > 55) {
+                            pGrad.addColorStop(0, '#fa8');
+                            pGrad.addColorStop(1, '#f42');
+                        } else {
+                            pGrad.addColorStop(0, config.color1);
+                            pGrad.addColorStop(1, config.color2);
+                        }
+                        ctx.fillStyle = pGrad;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, planet.size, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.strokeStyle = planet.heat > 55 ? 'rgba(255, 100, 50, 0.5)' : 'rgba(100, 200, 255, 0.4)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, planet.size + 3, 0, Math.PI * 2);
+                        ctx.stroke();
+
+                        ctx.restore();
+                    }
+
+                    // Particles
+                    particles.forEach(p => p.draw(ctx));
+                }
+
+                ctx.restore();
+
+            } catch(e) { console.log('Draw error:', e); }
+        }
+
+        function loop() {
+            try {
+                update();
+                draw();
+                requestAnimationFrame(loop);
+            } catch(e) {
+                console.log('Loop error:', e);
+                setTimeout(() => requestAnimationFrame(loop), 100);
+            }
+        }
+
+        loadPlayerData();
+        syncConsentToCloud();
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+        requestAnimationFrame(loop);
+    </script>
+</body>
+</html>

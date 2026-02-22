@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Orbital Defense</string>
+    <string name="title_activity_main">Orbital Defense</string>
+    <string name="package_name">com.orbital.defense</string>
+    <string name="custom_url_scheme">com.orbital.defense</string>
+</resources>

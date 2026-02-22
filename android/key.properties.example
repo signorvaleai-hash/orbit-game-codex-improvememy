@@ -1,0 +1,5 @@
+# Copy to android/key.properties (do not commit real secrets)
+storeFile=../keystore/orbital-defense-release.jks
+storePassword=CHANGE_ME
+keyAlias=orbitaldefense
+keyPassword=CHANGE_ME
