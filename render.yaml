@@ -3,6 +3,10 @@ services:
     name: orbital-defense-api
     runtime: node
     plan: free
+    disk:
+      name: orbit-data
+      mountPath: /var/data
+      sizeGB: 1
     buildCommand: npm ci --include=dev
     startCommand: BACKEND_HOST=0.0.0.0 BACKEND_PORT=$PORT node backend/src/server.js
     healthCheckPath: /health
@@ -14,6 +18,18 @@ services:
         sync: false
       - key: BACKEND_ADMIN_KEY
         sync: false
+      - key: BACKEND_DB_PATH
+        value: /var/data/orbit.sqlite
+      - key: BACKEND_PERSISTENT_PATHS
+        value: /var/data
+      - key: BACKEND_REQUIRE_DURABLE_DB
+        value: "1"
+      - key: BACKEND_DB_BACKUP_INTERVAL_MS
+        value: "300000"
+      - key: BACKEND_DB_BACKUP_KEEP
+        value: "96"
+      - key: BACKEND_DB_BACKUP_DIR
+        value: /var/data/backups
 
   - type: web
     name: orbital-defense-web

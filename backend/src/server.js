@@ -13,14 +13,82 @@ const API_KEY = String(process.env.BACKEND_API_KEY || '');
 const ADMIN_KEY = String(process.env.BACKEND_ADMIN_KEY || '');
 const RATE_LIMIT_WINDOW_MS = Number(process.env.BACKEND_RATE_LIMIT_WINDOW_MS || 60_000);
 const RATE_LIMIT_MAX = Number(process.env.BACKEND_RATE_LIMIT_MAX || 120);
+const IS_RENDER = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_INSTANCE_ID);
+const PERSISTENT_ROOTS = String(process.env.BACKEND_PERSISTENT_PATHS || '/var/data')
+  .split(',')
+  .map((value) => path.resolve(String(value || '').trim()))
+  .filter(Boolean);
+const REQUIRE_DURABLE_DB = String(process.env.BACKEND_REQUIRE_DURABLE_DB || '0') === '1';
+const DB_BACKUP_INTERVAL_MS = Math.floor(Math.max(0, Number(process.env.BACKEND_DB_BACKUP_INTERVAL_MS || 300000)));
+const DB_BACKUP_KEEP = Math.floor(Math.max(1, Number(process.env.BACKEND_DB_BACKUP_KEEP || 96)));
 const DATA_DIR = path.join(__dirname, '..', 'data');
-const DB_PATH = process.env.BACKEND_DB_PATH || path.join(DATA_DIR, 'orbit.sqlite');
+
+function isPathInsideRoot(targetPath, rootPath) {
+  const target = path.resolve(targetPath);
+  const root = path.resolve(rootPath);
+  return target === root || target.startsWith(root + path.sep);
+}
+
+function hasMountedVolume(rootPath) {
+  try {
+    if (!fs.existsSync(rootPath)) return false;
+    const rootFs = fs.statSync('/');
+    const targetFs = fs.statSync(rootPath);
+    return Number(rootFs.dev) !== Number(targetFs.dev);
+  } catch {
+    return false;
+  }
+}
+
+function isDurableDbPath(dbPath) {
+  const insidePersistentRoot = PERSISTENT_ROOTS.some((rootPath) => isPathInsideRoot(dbPath, rootPath));
+  if (!IS_RENDER) return true;
+  if (!insidePersistentRoot) return false;
+  return PERSISTENT_ROOTS.some((rootPath) => isPathInsideRoot(dbPath, rootPath) && hasMountedVolume(rootPath));
+}
+
+function resolveDbPath() {
+  const configured = String(process.env.BACKEND_DB_PATH || '').trim();
+  if (configured) return path.resolve(configured);
+  if (IS_RENDER && fs.existsSync('/var/data')) return '/var/data/orbit.sqlite';
+  return path.join(DATA_DIR, 'orbit.sqlite');
+}
+
+function resolveBackupDir(dbPath) {
+  return process.env.BACKEND_DB_BACKUP_DIR
+    ? path.resolve(process.env.BACKEND_DB_BACKUP_DIR)
+    : path.join(path.dirname(dbPath), 'backups');
+}
+
+let DB_PATH = resolveDbPath();
+let STORAGE_DURABLE = isDurableDbPath(DB_PATH);
+let DB_BACKUP_DIR = resolveBackupDir(DB_PATH);
 const rateBuckets = new Map();
+let lastBackupAt = 0;
+let lastBackupError = '';
+let backupTimer = null;
+let shuttingDown = false;
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
+try {
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+} catch (error) {
+  if (REQUIRE_DURABLE_DB) throw error;
+  const fallbackPath = path.join(DATA_DIR, 'orbit.sqlite');
+  fs.mkdirSync(path.dirname(fallbackPath), { recursive: true });
+  DB_PATH = fallbackPath;
+  STORAGE_DURABLE = isDurableDbPath(DB_PATH);
+  DB_BACKUP_DIR = resolveBackupDir(DB_PATH);
+  console.warn(`[storage] failed to use configured DB path, falling back to ${DB_PATH}: ${String(error && error.message ? error.message : error)}`);
+}
+if (REQUIRE_DURABLE_DB && !STORAGE_DURABLE) {
+  throw new Error(`Durable storage required, but DB path is not inside persistent roots. DB_PATH=${DB_PATH}`);
+}
 const db = new DatabaseSync(DB_PATH);
 db.exec('PRAGMA journal_mode = WAL;');
+db.exec('PRAGMA synchronous = FULL;');
 db.exec('PRAGMA foreign_keys = ON;');
+db.exec('PRAGMA wal_autocheckpoint = 1000;');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS profiles (
@@ -276,6 +344,125 @@ const query = {
   `)
 };
 
+function getBackupFiles() {
+  try {
+    if (!fs.existsSync(DB_BACKUP_DIR)) return [];
+    return fs.readdirSync(DB_BACKUP_DIR)
+      .filter((fileName) => fileName.endsWith('.sqlite'))
+      .map((fileName) => {
+        const fullPath = path.join(DB_BACKUP_DIR, fileName);
+        const stat = fs.statSync(fullPath);
+        return {
+          fileName,
+          fullPath,
+          mtimeMs: Number(stat.mtimeMs || 0),
+          sizeBytes: Number(stat.size || 0)
+        };
+      })
+      .sort((a, b) => a.mtimeMs - b.mtimeMs);
+  } catch {
+    return [];
+  }
+}
+
+function snapshotDatabase(reason = 'scheduled') {
+  try {
+    fs.mkdirSync(DB_BACKUP_DIR, { recursive: true });
+    db.exec('PRAGMA wal_checkpoint(FULL);');
+    const stamp = new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14);
+    const safeReason = String(reason || 'snapshot').replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'snapshot';
+    const backupPath = path.join(DB_BACKUP_DIR, `orbit-${stamp}-${safeReason}.sqlite`);
+    fs.copyFileSync(DB_PATH, backupPath);
+    lastBackupAt = Date.now();
+    lastBackupError = '';
+
+    const files = getBackupFiles();
+    if (files.length > DB_BACKUP_KEEP) {
+      const toDelete = files.slice(0, files.length - DB_BACKUP_KEEP);
+      for (const entry of toDelete) {
+        try {
+          fs.unlinkSync(entry.fullPath);
+        } catch {
+          // Keep going, pruning is best effort.
+        }
+      }
+    }
+  } catch (error) {
+    lastBackupError = String(error && error.message ? error.message : 'backup_failed');
+  }
+}
+
+function startBackupScheduler() {
+  if (DB_BACKUP_INTERVAL_MS <= 0) return;
+  snapshotDatabase('startup');
+  backupTimer = setInterval(() => snapshotDatabase('scheduled'), DB_BACKUP_INTERVAL_MS);
+  if (backupTimer && typeof backupTimer.unref === 'function') backupTimer.unref();
+}
+
+function getStorageHealth() {
+  let dbSizeBytes = 0;
+  let dbUpdatedAt = 0;
+  try {
+    const stat = fs.statSync(DB_PATH);
+    dbSizeBytes = Number(stat.size || 0);
+    dbUpdatedAt = Number(stat.mtimeMs || 0);
+  } catch {
+    dbSizeBytes = 0;
+    dbUpdatedAt = 0;
+  }
+
+  const backups = getBackupFiles();
+  const latestBackup = backups.length ? backups[backups.length - 1] : null;
+  const mountedRoots = PERSISTENT_ROOTS.filter((rootPath) => hasMountedVolume(rootPath));
+  const dbInsidePersistentRoot = PERSISTENT_ROOTS.some((rootPath) => isPathInsideRoot(DB_PATH, rootPath));
+  let warning = '';
+  if (!STORAGE_DURABLE) {
+    if (IS_RENDER && dbInsidePersistentRoot && mountedRoots.length === 0) {
+      warning = 'DB path looks correct but no mounted disk was detected. Attach a Render disk to keep analytics across deploys.';
+    } else if (IS_RENDER) {
+      warning = 'Ephemeral storage detected. Mount a Render disk and set BACKEND_DB_PATH to /var/data/orbit.sqlite.';
+    }
+  }
+
+  return {
+    dbPath: DB_PATH,
+    durable: STORAGE_DURABLE,
+    mode: STORAGE_DURABLE ? 'durable' : 'ephemeral',
+    warning,
+    isRender: IS_RENDER,
+    persistentRoots: PERSISTENT_ROOTS,
+    mountedRoots,
+    dbSizeBytes,
+    dbUpdatedAt,
+    backups: {
+      enabled: DB_BACKUP_INTERVAL_MS > 0,
+      intervalMs: DB_BACKUP_INTERVAL_MS,
+      keep: DB_BACKUP_KEEP,
+      directory: DB_BACKUP_DIR,
+      count: backups.length,
+      latestAt: latestBackup ? latestBackup.mtimeMs : 0,
+      latestSizeBytes: latestBackup ? latestBackup.sizeBytes : 0,
+      lastSnapshotAt: lastBackupAt,
+      lastError: lastBackupError
+    }
+  };
+}
+
+function gracefulShutdown() {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  if (backupTimer) {
+    clearInterval(backupTimer);
+    backupTimer = null;
+  }
+  snapshotDatabase('shutdown');
+  process.exit(0);
+}
+
+startBackupScheduler();
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
 function nowMs() {
   return Date.now();
 }
@@ -420,7 +607,14 @@ function route(req, res) {
   }
 
   if (pathname === '/health' && req.method === 'GET') {
-    return json(res, 200, { ok: true, service: 'orbit-backend', time: nowMs() });
+    const storage = getStorageHealth();
+    return json(res, 200, {
+      ok: true,
+      service: 'orbit-backend',
+      time: nowMs(),
+      storageMode: storage.mode,
+      durableStorage: storage.durable
+    });
   }
 
   if (!enforceRateLimit(req)) {
@@ -720,6 +914,7 @@ function route(req, res) {
       generatedAt: now,
       rangeDays,
       liveMinutes,
+      storage: getStorageHealth(),
       overview: {
         visitorsTotal: Number(visitors ? visitors.count : 0),
         visitorsToday: Number(visitorsToday ? visitorsToday.count : 0),
@@ -746,6 +941,14 @@ function route(req, res) {
         visitsByDay: visitSeries
       },
       events: eventRows
+    });
+  }
+
+  if (pathname === '/v1/admin/storage/snapshot' && req.method === 'POST') {
+    snapshotDatabase('manual');
+    return json(res, 202, {
+      ok: true,
+      storage: getStorageHealth()
     });
   }
 
@@ -808,4 +1011,8 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`orbit-backend listening on http://${HOST}:${PORT}`);
+  console.log(`[storage] db=${DB_PATH} mode=${STORAGE_DURABLE ? 'durable' : 'ephemeral'} backups=${DB_BACKUP_INTERVAL_MS > 0 ? 'on' : 'off'}`);
+  if (!STORAGE_DURABLE) {
+    console.warn('[storage] warning: durable path not detected. Analytics can reset on redeploy/restart.');
+  }
 });

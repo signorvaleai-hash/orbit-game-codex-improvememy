@@ -8,16 +8,18 @@
   <style>
     :root {
       --bg: #050814;
-      --panel: #0a1228;
-      --panel-2: #0d1935;
-      --ink: #eaf1ff;
-      --muted: #92a6ce;
-      --brand: #4ea2ff;
+      --panel: #08122a;
+      --panel-2: #0d1b3b;
+      --ink: #edf4ff;
+      --muted: #8ba4ce;
+      --brand: #45a0ff;
       --brand-2: #7a63ff;
-      --good: #3fd08e;
+      --good: #35d28b;
       --warn: #f6c056;
-      --line: rgba(120, 170, 255, 0.28);
-      --shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+      --bad: #ff808f;
+      --line: rgba(120, 170, 255, 0.26);
+      --line-soft: rgba(120, 170, 255, 0.16);
+      --shadow: 0 22px 45px rgba(0, 0, 0, 0.4);
       --radius: 18px;
     }
 
@@ -32,13 +34,14 @@
         radial-gradient(1000px 600px at 100% 0%, rgba(122, 99, 255, 0.18), transparent 40%),
         linear-gradient(180deg, #060a1a 0%, var(--bg) 100%);
       min-height: 100vh;
+      line-height: 1.3;
     }
 
     .wrap {
-      width: min(1280px, 100% - 28px);
-      margin: 22px auto 40px;
+      width: min(1320px, 100% - 28px);
+      margin: 20px auto 40px;
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .topbar {
@@ -46,15 +49,15 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      padding: 18px 20px;
-      background: linear-gradient(160deg, rgba(10, 18, 40, 0.92), rgba(13, 25, 53, 0.9));
+      padding: 16px 18px;
+      background: linear-gradient(165deg, rgba(9, 18, 40, 0.94), rgba(14, 27, 58, 0.9));
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       flex-wrap: wrap;
     }
 
-    .title { font-size: clamp(22px, 3vw, 34px); font-weight: 650; letter-spacing: -0.02em; }
+    .title { font-size: clamp(23px, 3vw, 34px); font-weight: 650; letter-spacing: -0.02em; }
     .subtitle { color: var(--muted); margin-top: 4px; font-size: 13px; }
 
     .controls {
@@ -66,7 +69,7 @@
 
     .control {
       border: 1px solid var(--line);
-      background: rgba(9, 18, 40, 0.8);
+      background: rgba(8, 16, 34, 0.85);
       color: var(--ink);
       border-radius: 12px;
       padding: 8px 12px;
@@ -74,13 +77,23 @@
     }
 
     .btn {
-      border: 0;
+      border: 1px solid rgba(120, 170, 255, 0.32);
       background: linear-gradient(135deg, var(--brand), var(--brand-2));
       color: #fff;
       border-radius: 12px;
       padding: 9px 14px;
       font-weight: 600;
       cursor: pointer;
+    }
+
+    .btn.secondary {
+      background: rgba(8, 16, 34, 0.9);
+      color: #b8d8ff;
+    }
+
+    .btn:disabled {
+      opacity: 0.58;
+      cursor: not-allowed;
     }
 
     .status-pill {
@@ -92,22 +105,126 @@
       background: rgba(9, 18, 40, 0.72);
     }
 
+    .storage-strip {
+      background: linear-gradient(165deg, rgba(10, 18, 40, 0.95), rgba(12, 24, 51, 0.92));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+      padding: 13px 14px;
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 10px 18px;
+      align-items: center;
+    }
+
+    .storage-main {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .storage-top {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .storage-badge {
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      border-radius: 999px;
+      padding: 5px 9px;
+      border: 1px solid var(--line-soft);
+      color: #d9eaff;
+      background: rgba(7, 14, 30, 0.8);
+    }
+
+    .storage-badge.ok {
+      border-color: rgba(53, 210, 139, 0.45);
+      color: #9ef0ca;
+      background: rgba(18, 54, 39, 0.42);
+    }
+
+    .storage-badge.warn {
+      border-color: rgba(255, 128, 143, 0.45);
+      color: #ffd0d7;
+      background: rgba(62, 22, 30, 0.4);
+    }
+
+    .storage-warning {
+      color: #ffd6db;
+      font-size: 12px;
+    }
+
+    .storage-meta {
+      color: #b8d6ff;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+
+    .storage-stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mini {
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: rgba(7, 14, 30, 0.78);
+      padding: 8px 10px;
+    }
+
+    .mini .label {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .mini .value {
+      margin-top: 4px;
+      font-size: 15px;
+      font-weight: 630;
+      color: #e7f0ff;
+    }
+
     .cards {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(6, minmax(0, 1fr));
       gap: 12px;
     }
 
     .card {
-      background: linear-gradient(165deg, rgba(10, 18, 40, 0.92), rgba(13, 25, 53, 0.84));
+      background: linear-gradient(165deg, rgba(10, 18, 40, 0.93), rgba(12, 23, 49, 0.9));
       border: 1px solid var(--line);
       border-radius: 16px;
       padding: 14px;
       box-shadow: var(--shadow);
     }
 
+    .metric {
+      position: relative;
+      overflow: hidden;
+      padding-top: 15px;
+    }
+
+    .metric::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      opacity: 0.85;
+    }
+
     .k-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
-    .k-value { font-size: clamp(24px, 3vw, 36px); margin-top: 6px; font-weight: 700; }
+    .k-value { font-size: clamp(24px, 3vw, 34px); margin-top: 6px; font-weight: 700; letter-spacing: -0.02em; }
+    .k-value.text { font-size: clamp(18px, 2.2vw, 26px); line-height: 1.15; }
     .k-meta { color: #b9d1ff; font-size: 12px; margin-top: 4px; }
 
     .grid-2 {
@@ -117,14 +234,21 @@
     }
 
     .panel-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 620;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
       color: #bfe1ff;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
     }
 
-    .table-wrap { overflow: auto; }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: rgba(8, 15, 32, 0.72);
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -134,16 +258,27 @@
     th, td {
       text-align: left;
       padding: 9px 8px;
-      border-bottom: 1px solid rgba(146, 166, 206, 0.16);
+      border-bottom: 1px solid rgba(146, 166, 206, 0.14);
       white-space: nowrap;
     }
 
-    th { color: #a8c6f6; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; }
+    th {
+      color: #a8c6f6;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      background: rgba(11, 20, 42, 0.92);
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
 
     tr.me { background: rgba(255, 211, 106, 0.09); }
     tr.gold { background: rgba(255, 211, 106, 0.1); }
     tr.silver { background: rgba(181, 221, 255, 0.08); }
     tr.bronze { background: rgba(244, 190, 143, 0.08); }
+    tr:nth-child(even) { background: rgba(11, 20, 42, 0.33); }
 
     .tag {
       font-size: 11px;
@@ -178,8 +313,9 @@
     .bar-track {
       height: 10px;
       border-radius: 999px;
-      background: rgba(158, 192, 255, 0.16);
+      background: rgba(158, 192, 255, 0.13);
       overflow: hidden;
+      border: 1px solid rgba(158, 192, 255, 0.14);
     }
 
     .bar-fill {
@@ -237,15 +373,29 @@
       font-size: 12px;
     }
 
+    .footnote {
+      color: var(--muted);
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
     @media (max-width: 1100px) {
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .grid-2 { grid-template-columns: 1fr; }
+      .storage-strip { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 640px) {
-      .cards { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .bar-row { grid-template-columns: 110px 1fr auto; }
       .wrap { width: min(1280px, 100% - 14px); margin-top: 14px; }
+      .k-value { font-size: 25px; }
+      .k-value.text { font-size: 18px; }
+      .storage-stats { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 420px) {
+      .cards { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -275,9 +425,12 @@
           <option value="60">Last 60 days</option>
         </select>
         <button id="refreshBtn" class="btn">Refresh</button>
+        <button id="snapshotBtn" class="btn secondary">Snapshot Now</button>
         <div id="statusPill" class="status-pill">Waiting</div>
       </div>
     </section>
+
+    <section id="storageStrip" class="storage-strip"></section>
 
     <section class="cards" id="kpiCards"></section>
 
@@ -372,8 +525,10 @@
     const adminKeyInputEl = document.getElementById('adminKeyInput');
     const unlockBtnEl = document.getElementById('unlockBtn');
     const refreshBtnEl = document.getElementById('refreshBtn');
+    const snapshotBtnEl = document.getElementById('snapshotBtn');
     const rangeSelectEl = document.getElementById('rangeSelect');
     const statusPillEl = document.getElementById('statusPill');
+    const storageStripEl = document.getElementById('storageStrip');
     const kpiCardsEl = document.getElementById('kpiCards');
     const topPlayersBodyEl = document.getElementById('topPlayersBody');
     const playersBodyEl = document.getElementById('playersBody');
@@ -400,6 +555,26 @@
 
     function formatNum(value) {
       return Math.max(0, Number(value || 0)).toLocaleString('en-US');
+    }
+
+    function formatPercent(value) {
+      const num = Number(value || 0);
+      if (!Number.isFinite(num)) return '0%';
+      return (Math.max(0, num) * 100).toFixed(1) + '%';
+    }
+
+    function formatBytes(bytes) {
+      const num = Math.max(0, Number(bytes || 0));
+      if (num < 1024) return num + ' B';
+      if (num < 1024 * 1024) return (num / 1024).toFixed(1) + ' KB';
+      if (num < 1024 * 1024 * 1024) return (num / (1024 * 1024)).toFixed(1) + ' MB';
+      return (num / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    }
+
+    function formatDateTime(ts) {
+      const t = Math.max(0, Number(ts || 0));
+      if (!t) return '-';
+      return new Date(t).toLocaleString();
     }
 
     function formatAgo(ts) {
@@ -441,10 +616,14 @@
       statusPillEl.style.borderColor = ok ? 'rgba(63, 208, 142, 0.4)' : 'rgba(255, 122, 134, 0.45)';
     }
 
-    async function adminFetch(path) {
+    async function adminRequest(path, method = 'GET', body = null) {
       const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey };
       if (API_KEY) headers['X-Orbit-Api-Key'] = API_KEY;
-      const res = await fetch(BACKEND_BASE + path, { method: 'GET', headers });
+      const res = await fetch(BACKEND_BASE + path, {
+        method,
+        headers,
+        body: body ? JSON.stringify(body) : undefined
+      });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(payload.error || ('http_' + res.status));
@@ -452,19 +631,59 @@
       return payload;
     }
 
+    function renderStorage(storage) {
+      if (!storageStripEl) return;
+      const s = storage || {};
+      const backups = s.backups || {};
+      const durable = !!s.durable;
+      const backupHealthy = backups.enabled ? !backups.lastError : true;
+      const modeClass = durable ? 'ok' : 'warn';
+      const backupClass = backupHealthy ? 'ok' : 'warn';
+      const warningHtml = s.warning
+        ? '<div class="storage-warning">' + escapeHtml(s.warning) + '</div>'
+        : '';
+      const backupError = backups.lastError
+        ? '<div class="footnote" style="color:#ffd6db;">Backup error: ' + escapeHtml(backups.lastError) + '</div>'
+        : '';
+
+      storageStripEl.innerHTML =
+        '<div class="storage-main">'
+        + '<div class="storage-top">'
+        + '<div class="storage-badge ' + modeClass + '">Storage ' + (durable ? 'Durable' : 'Ephemeral') + '</div>'
+        + '<div class="storage-badge ' + backupClass + '">Backups ' + (backups.enabled ? (backupHealthy ? 'Healthy' : 'Error') : 'Off') + '</div>'
+        + '</div>'
+        + '<div class="storage-meta">DB: ' + escapeHtml(s.dbPath || '-') + '</div>'
+        + warningHtml
+        + '</div>'
+        + '<div class="storage-stats">'
+        + '<div class="mini"><div class="label">DB Size</div><div class="value">' + escapeHtml(formatBytes(s.dbSizeBytes)) + '</div></div>'
+        + '<div class="mini"><div class="label">DB Updated</div><div class="value">' + escapeHtml(formatAgo(s.dbUpdatedAt)) + '</div></div>'
+        + '<div class="mini"><div class="label">Backups</div><div class="value">' + escapeHtml(formatNum(backups.count)) + '</div></div>'
+        + '<div class="mini"><div class="label">Latest Snapshot</div><div class="value">' + escapeHtml(backups.latestAt ? formatAgo(backups.latestAt) : '-') + '</div></div>'
+        + '</div>'
+        + backupError;
+    }
+
     function renderOverview(overview) {
+      const visitors = Math.max(0, Number(overview.visitorsTotal || 0));
+      const players = Math.max(0, Number(overview.playersTotal || 0));
+      const runs = Math.max(0, Number(overview.runsTotal || 0));
+      const conversion = visitors > 0 ? players / visitors : 0;
+      const runsPerPlayer = players > 0 ? runs / players : 0;
       const cards = [
-        { label: 'Visitors', value: overview.visitorsTotal, meta: formatNum(overview.visitorsToday) + ' active in 24h' },
-        { label: 'Players', value: overview.playersTotal, meta: formatNum(overview.playersLive) + ' live now' },
-        { label: 'Runs', value: overview.runsTotal, meta: formatNum(overview.runsToday) + ' in 24h' },
-        { label: 'High Score', value: overview.highestScore, meta: 'Avg score ' + formatNum(overview.averageScore) },
-        { label: 'Open Sessions', value: overview.sessionsOpen, meta: 'Currently in active play loops' },
-        { label: 'Top Pilot', value: overview.topPlayer || 'No one yet', meta: 'Best score owner' }
+        { label: 'Visitors', value: formatNum(visitors), meta: formatNum(overview.visitorsToday) + ' active in 24h' },
+        { label: 'Players', value: formatNum(players), meta: formatNum(overview.playersLive) + ' active in live window' },
+        { label: 'Runs', value: formatNum(runs), meta: formatNum(overview.runsToday) + ' runs in 24h' },
+        { label: 'Visitor to Player', value: formatPercent(conversion), meta: formatNum(players) + ' of ' + formatNum(visitors) + ' visitors converted', valueClass: 'text' },
+        { label: 'Runs per Player', value: runsPerPlayer.toFixed(1), meta: 'Average sessions completed per pilot', valueClass: 'text' },
+        { label: 'Top Score', value: formatNum(overview.highestScore), meta: 'Average score ' + formatNum(overview.averageScore) },
+        { label: 'Open Sessions', value: formatNum(overview.sessionsOpen), meta: 'Current active gameplay sessions' },
+        { label: 'Top Pilot', value: overview.topPlayer || 'No one yet', meta: 'Current best run owner', valueClass: 'text' }
       ];
       kpiCardsEl.innerHTML = cards.map((card) => (
-        '<div class="card">'
+        '<div class="card metric">'
         + '<div class="k-label">' + escapeHtml(card.label) + '</div>'
-        + '<div class="k-value">' + escapeHtml(card.value) + '</div>'
+        + '<div class="k-value ' + escapeHtml(card.valueClass || '') + '">' + escapeHtml(card.value) + '</div>'
         + '<div class="k-meta">' + escapeHtml(card.meta) + '</div>'
         + '</div>'
       )).join('');
@@ -522,6 +741,7 @@
     }
 
     function renderDashboard(data) {
+      renderStorage(data.storage || {});
       renderOverview(data.overview || {});
       renderTopPlayers(Array.isArray(data.topPlayers) ? data.topPlayers : []);
       renderPlayers(Array.isArray(data.recentPlayers) ? data.recentPlayers : []);
@@ -543,10 +763,11 @@
       const days = Number(rangeSelectEl.value || 30);
       setStatus('Refreshing...');
       try {
-        const data = await adminFetch('/v1/admin/dashboard?rangeDays=' + days + '&liveMinutes=15');
+        const data = await adminRequest('/v1/admin/dashboard?rangeDays=' + days + '&liveMinutes=15');
         renderDashboard(data);
         const t = new Date(data.generatedAt || Date.now());
         setStatus('Updated ' + t.toLocaleTimeString());
+        return true;
       } catch (err) {
         const msg = String(err.message || 'request_failed');
         if (msg.includes('admin_unauthorized') || msg.includes('401')) {
@@ -556,12 +777,30 @@
           lockErrorEl.textContent = 'Invalid admin key. Please try again.';
         }
         setStatus('Sync failed', false);
+        throw err;
+      }
+    }
+
+    async function snapshotNow() {
+      if (!adminKey) return;
+      if (snapshotBtnEl) snapshotBtnEl.disabled = true;
+      setStatus('Creating snapshot...');
+      try {
+        await adminRequest('/v1/admin/storage/snapshot', 'POST');
+        await loadDashboard();
+        setStatus('Snapshot saved');
+      } catch (err) {
+        setStatus('Snapshot failed', false);
+      } finally {
+        if (snapshotBtnEl) snapshotBtnEl.disabled = false;
       }
     }
 
     function startAutoRefresh() {
       if (refreshTimer) clearInterval(refreshTimer);
-      refreshTimer = setInterval(loadDashboard, 15000);
+      refreshTimer = setInterval(() => {
+        loadDashboard().catch(() => {});
+      }, 15000);
     }
 
     unlockBtnEl.addEventListener('click', async () => {
@@ -586,12 +825,13 @@
       if (e.key === 'Enter') unlockBtnEl.click();
     });
 
-    refreshBtnEl.addEventListener('click', loadDashboard);
-    rangeSelectEl.addEventListener('change', loadDashboard);
+    refreshBtnEl.addEventListener('click', () => { loadDashboard().catch(() => {}); });
+    if (snapshotBtnEl) snapshotBtnEl.addEventListener('click', snapshotNow);
+    rangeSelectEl.addEventListener('change', () => { loadDashboard().catch(() => {}); });
 
     if (adminKey) {
       lockEl.style.display = 'none';
-      loadDashboard();
+      loadDashboard().catch(() => {});
       startAutoRefresh();
     } else {
       setStatus('Locked', false);

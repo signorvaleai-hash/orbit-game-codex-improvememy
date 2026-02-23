@@ -13,7 +13,12 @@ npm run backend:start
 Defaults:
 - `BACKEND_HOST=127.0.0.1`
 - `BACKEND_PORT=8787`
-- `BACKEND_DB_PATH=backend/data/orbit.sqlite`
+- `BACKEND_DB_PATH=backend/data/orbit.sqlite` (auto-switches to `/var/data/orbit.sqlite` on Render when available)
+- `BACKEND_PERSISTENT_PATHS=/var/data` (comma-separated roots considered durable)
+- `BACKEND_REQUIRE_DURABLE_DB=0` (`1` = fail startup if DB path is not on durable storage)
+- `BACKEND_DB_BACKUP_INTERVAL_MS=300000` (5 min snapshots, set `0` to disable)
+- `BACKEND_DB_BACKUP_KEEP=96` (backup rotation limit)
+- `BACKEND_DB_BACKUP_DIR=<db-dir>/backups`
 - `BACKEND_CORS_ORIGIN=*`
 - `BACKEND_API_KEY=` (optional)
 - `BACKEND_ADMIN_KEY=` (required for admin dashboard endpoints)
@@ -42,7 +47,9 @@ Defaults:
 
 Admin-only (requires `X-Admin-Key` header matching `BACKEND_ADMIN_KEY`):
 - `GET /v1/admin/dashboard?rangeDays=30&liveMinutes=15`
-  - returns overview KPIs, top players, recent players/runs, traffic source analytics, day charts, and event counts
+  - returns overview KPIs, top players, recent players/runs, traffic source analytics, day charts, event counts, and storage health
+- `POST /v1/admin/storage/snapshot`
+  - triggers an immediate SQLite snapshot into backup directory
 
 Notes:
 - leaderboard top is per-player best score (one row per real profile)
@@ -68,3 +75,14 @@ Controls:
 - Add rate limits by profile/device/IP
 - Store leaderboard in Postgres/Redis for scale
 - Add signed app-attestation (DeviceCheck/Play Integrity)
+
+## Durable analytics storage on Render
+
+To avoid analytics loss across deploys/restarts, use persistent storage:
+
+1. Create/mount a Render disk to the API service at `/var/data`.
+2. Set `BACKEND_DB_PATH=/var/data/orbit.sqlite`.
+3. Optionally set `BACKEND_REQUIRE_DURABLE_DB=1` to block accidental boot on ephemeral storage.
+4. Keep `BACKEND_DB_BACKUP_INTERVAL_MS` enabled for snapshot backups.
+
+The admin dashboard now shows `Storage Durable` vs `Storage Ephemeral` so you can verify persistence mode after each deploy.

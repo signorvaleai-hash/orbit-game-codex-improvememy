@@ -28,8 +28,8 @@ ios/App/DerivedData/
 *.xcuserstate
 
 # Backend local data
-backend/data/*.sqlite
-backend/data/*.sqlite-*
+backend/data/**
+!backend/data/.gitkeep
 backend/.env
 .env
 
