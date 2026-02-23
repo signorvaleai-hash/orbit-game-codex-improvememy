@@ -221,7 +221,7 @@
             justify-content: flex-start;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
-            gap: 8px;
+            gap: 0;
         }
 
         #gameOver, #victoryScreen {
@@ -440,7 +440,209 @@
 
         #startBtn {
             display: block;
-            margin: 4px auto 10px;
+            margin: 0;
+            width: 100%;
+            max-width: 100%;
+            border-radius: 24px;
+            font-size: clamp(18px, 3.2vw, 42px);
+            padding: 18px 24px;
+            line-height: 1.2;
+        }
+
+        .start-shell {
+            width: min(100%, 760px);
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            padding-bottom: calc(20px + var(--safe-bottom));
+        }
+
+        .start-hero .title {
+            margin-bottom: 10px;
+            text-align: left;
+            color: rgba(255, 255, 255, 0.94);
+            font-size: clamp(42px, 8vw, 88px);
+            font-weight: 500;
+            letter-spacing: -0.03em;
+        }
+
+        .start-hero .subtitle {
+            margin-bottom: 0;
+            text-align: left;
+            max-width: none;
+            color: rgba(255, 255, 255, 0.56);
+            font-size: clamp(16px, 2.2vw, 34px);
+        }
+
+        #startScreen .setup-guide {
+            max-width: none;
+            margin-bottom: 0;
+            padding: 0;
+            border: 0;
+            background: transparent;
+        }
+
+        #startScreen .setup-hint {
+            text-align: left;
+            color: rgba(215, 241, 255, 0.86);
+            font-size: clamp(13px, 1.8vw, 24px);
+        }
+
+        #startScreen .focus-pulse {
+            box-shadow: 0 0 0 2px rgba(100, 200, 255, 0.36), 0 0 18px rgba(100, 200, 255, 0.18);
+        }
+
+        .start-name {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+            margin-bottom: 6px;
+        }
+
+        .start-label {
+            color: rgba(255, 255, 255, 0.92);
+            font-size: clamp(16px, 2.4vw, 30px);
+            line-height: 1.2;
+        }
+
+        #playerNameInput {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(100, 200, 255, 0.42);
+            background: rgba(0, 0, 0, 0.32);
+            color: #fff;
+            text-align: left;
+            font-size: clamp(18px, 2.6vw, 30px);
+            line-height: 1.25;
+        }
+
+        .start-note {
+            color: rgba(255, 255, 255, 0.66);
+            font-size: clamp(12px, 1.7vw, 20px);
+            text-align: left;
+        }
+
+        #startScreen .mode-select {
+            width: 100%;
+            max-width: none;
+            margin-bottom: 0;
+        }
+
+        #startScreen .mode-btn {
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: clamp(17px, 3.2vw, 34px);
+            border-color: rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.92);
+            justify-content: flex-start;
+        }
+
+        #startScreen .mode-btn.selected {
+            background: rgba(80, 112, 194, 0.32);
+            border-color: rgba(120, 165, 255, 0.42);
+        }
+
+        .mode-chevron {
+            color: rgba(255, 255, 255, 0.45);
+            margin-left: 6px;
+        }
+
+        #startScreen .pace-select {
+            width: 100%;
+            max-width: none;
+            margin-bottom: 0;
+            gap: 6px;
+            background: rgba(16, 18, 28, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 16px;
+            padding: 6px;
+        }
+
+        #startScreen .pace-btn {
+            font-size: clamp(16px, 2.7vw, 28px);
+            border-radius: 12px;
+            border: 0;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.66);
+            padding: 12px 8px;
+            text-transform: none;
+        }
+
+        #startScreen .pace-btn.selected {
+            background: rgba(74, 133, 255, 0.28);
+            color: #4f92ff;
+            border: 0;
+        }
+
+        .start-difficulty-line {
+            color: rgba(255, 255, 255, 0.58);
+            font-size: clamp(14px, 2vw, 24px);
+            line-height: 1.3;
+        }
+
+        .start-utility {
+            width: 100%;
+            border: 1px solid rgba(100, 200, 255, 0.22);
+            border-radius: 14px;
+            background: rgba(0, 0, 0, 0.28);
+            padding: 8px 12px 12px;
+        }
+
+        .start-utility summary {
+            cursor: pointer;
+            color: rgba(191, 232, 255, 0.92);
+            font-size: clamp(12px, 1.8vw, 20px);
+            list-style: none;
+            user-select: none;
+            margin-bottom: 8px;
+        }
+
+        .start-utility summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .start-meta-line {
+            color: rgba(255, 255, 255, 0.62);
+            font-size: clamp(11px, 1.6vw, 18px);
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .start-panel {
+            width: 100%;
+            border: 1px solid rgba(100, 200, 255, 0.2);
+            border-radius: 10px;
+            padding: 9px 10px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .start-mission-guide {
+            width: 100%;
+            border: 1px solid rgba(100, 200, 255, 0.25);
+            border-radius: 10px;
+            padding: 8px 10px;
+            background: rgba(100, 200, 255, 0.08);
+            color: #d7f1ff;
+            font-size: clamp(11px, 1.6vw, 17px);
+            line-height: 1.35;
+            text-align: left;
+        }
+
+        @media (max-width: 640px) {
+            #startScreen {
+                padding-top: calc(24px + var(--safe-top));
+                padding-right: calc(16px + var(--safe-right));
+                padding-bottom: calc(22px + var(--safe-bottom));
+                padding-left: calc(16px + var(--safe-left));
+            }
+
+            .start-shell {
+                gap: 12px;
+            }
         }
 
         .planet-dot {
@@ -524,67 +726,78 @@
     </div>
 
     <div id="startScreen">
-        <div class="title">ORBITAL DEFENSE</div>
-        <div class="subtitle">Save 3 planets from the debris field</div>
-        <div id="setupGuide" class="setup-guide">
-            <div id="setupGuideTitle" class="setup-guide-title" style="display: none;">Quick Setup</div>
-            <div id="setupStepName" class="setup-step pending">1. Name</div>
-            <div id="setupStepPrivacy" class="setup-step pending">2. Privacy</div>
-            <div id="setupHint" class="setup-hint">Enter name, save privacy, tap START.</div>
-        </div>
-        <div id="welcomeLine" style="color: #9ed9ff; font-size: 13px; margin-bottom: 4px;">Pilot name</div>
-        <div id="nameSetup" style="display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 280px; margin-bottom: 8px;">
-            <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter pilot name" style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(100,200,255,0.35); background: rgba(0,0,0,0.35); color: #fff; text-align: center; font-size: 13px;">
-            <div id="nameRequirementLine" style="color: rgba(255,255,255,0.72); font-size: 10px; text-align: center;">Required to start.</div>
-        </div>
-        <div id="firstMissionGuide" style="display: none; max-width: 300px; margin-bottom: 8px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(100,200,255,0.25); background: rgba(100,200,255,0.08); color: #d7f1ff; font-size: 10px; text-align: center; line-height: 1.4;">
-            Hold = in, release = out. Survive 24s to reach Pilot.
-        </div>
-        <div id="backendStatusLine" style="color: rgba(255,255,255,0.56); font-size: 10px; margin-bottom: 4px;">Cloud sync: checking...</div>
-        <div id="publicStatsPanel" style="width: 100%; max-width: 320px; margin-bottom: 6px; border: 1px solid rgba(100,200,255,0.2); border-radius: 10px; padding: 7px 10px; background: rgba(0,0,0,0.25);">
-            <div id="publicStatsMiniLine" style="color: rgba(255,255,255,0.9); font-size: 10px; text-align: center;">Players 0 • Runs 0 • High 0</div>
-            <div id="statsTopPilotLine" style="color: rgba(255,255,255,0.62); font-size: 9px; text-align: center; margin-top: 4px;">Top: No one yet</div>
-            <div style="display: none;">
-                <span id="statsVisitors">0</span>
-                <span id="statsPlayers">0</span>
-                <span id="statsRuns">0</span>
-                <span id="statsHighScore">0</span>
+        <div class="start-shell">
+            <div class="start-hero">
+                <div class="title">Orbital Defense</div>
+                <div class="subtitle">Protect three planets from orbital debris.</div>
             </div>
-        </div>
-        <div id="consentPanel" style="display: none; width: 100%; max-width: 320px; margin-bottom: 8px; border: 1px solid rgba(100,200,255,0.2); border-radius: 10px; padding: 8px 10px; background: rgba(0,0,0,0.28);">
-            <div style="color: #bfe8ff; font-size: 11px; text-align: center; margin-bottom: 6px;">Privacy</div>
-            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 5px;">
-                <span>Analytics</span>
-                <input id="consentAnalytics" type="checkbox">
-            </label>
-            <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 6px;">
-                <span>Crash reports</span>
-                <input id="consentCrash" type="checkbox">
-            </label>
-            <button id="consentSaveBtn" style="width: 100%; border: 1px solid rgba(100,200,255,0.3); background: rgba(100,200,255,0.16); color: #d7f1ff; padding: 8px 10px; border-radius: 8px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Save Privacy</button>
-            <div id="consentStatusLine" style="color: #ffd36a; font-size: 9px; text-align: center; margin-top: 5px;">Tap save once.</div>
-        </div>
 
-        <button class="btn" id="startBtn">START</button>
-
-        <div class="mode-select">
-            <div class="mode-btn selected">
-                <span>🌍 Earth Orbit</span>
-                <span class="tag normal">Adaptive</span>
+            <div id="setupGuide" class="setup-guide">
+                <div id="setupGuideTitle" class="setup-guide-title" style="display: none;">Quick Setup</div>
+                <div id="setupStepName" class="setup-step pending">1. Name</div>
+                <div id="setupStepPrivacy" class="setup-step pending">2. Privacy</div>
+                <div id="setupHint" class="setup-hint">Enter your name to continue.</div>
             </div>
-        </div>
 
-        <div id="paceHintLine" style="color: rgba(255,255,255,0.62); font-size: 10px; margin-bottom: 4px;">Pace</div>
-        <div class="pace-select">
-            <button class="pace-btn" data-pace="easy">Easy</button>
-            <button class="pace-btn selected" data-pace="medium">Medium</button>
-            <button class="pace-btn" data-pace="hard">Hard</button>
-        </div>
+            <div id="nameSetup" class="start-name">
+                <label id="welcomeLine" class="start-label" for="playerNameInput">Pilot name</label>
+                <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter pilot name">
+                <div id="nameRequirementLine" class="start-note">Required to start.</div>
+            </div>
 
-        <div class="planet-preview">
-            <div class="planet-dot current"></div>
-            <div class="planet-dot"></div>
-            <div class="planet-dot"></div>
+            <button class="btn" id="startBtn">Start Mission</button>
+
+            <div class="mode-select">
+                <div class="mode-btn selected">
+                    <span>Earth Orbit<span class="mode-chevron">›</span></span>
+                </div>
+            </div>
+
+            <div class="pace-select">
+                <button class="pace-btn" data-pace="easy">Easy</button>
+                <button class="pace-btn selected" data-pace="medium">Medium</button>
+                <button class="pace-btn" data-pace="hard">Hard</button>
+            </div>
+            <div id="paceHintLine" class="start-difficulty-line">Difficulty: Medium</div>
+
+            <details id="startUtilityPanel" class="start-utility">
+                <summary>Privacy & stats</summary>
+                <div id="backendStatusLine" class="start-meta-line">Cloud sync: checking...</div>
+                <div id="consentPanel" class="start-panel">
+                    <div style="color: #bfe8ff; font-size: 11px; text-align: center; margin-bottom: 6px;">Privacy</div>
+                    <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 5px;">
+                        <span>Analytics</span>
+                        <input id="consentAnalytics" type="checkbox">
+                    </label>
+                    <label style="display: flex; justify-content: space-between; align-items: center; font-size: 10px; color: rgba(255,255,255,0.78); margin-bottom: 6px;">
+                        <span>Crash reports</span>
+                        <input id="consentCrash" type="checkbox">
+                    </label>
+                    <button id="consentSaveBtn" style="width: 100%; border: 1px solid rgba(100,200,255,0.3); background: rgba(100,200,255,0.16); color: #d7f1ff; padding: 8px 10px; border-radius: 8px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Save Privacy</button>
+                    <div id="consentStatusLine" style="color: #ffd36a; font-size: 9px; text-align: center; margin-top: 5px;">Tap save once.</div>
+                </div>
+
+                <div id="publicStatsPanel" class="start-panel" style="margin-top: 8px;">
+                    <div id="publicStatsMiniLine" style="color: rgba(255,255,255,0.9); font-size: 10px; text-align: center;">Players 0 • Runs 0 • High 0</div>
+                    <div id="statsTopPilotLine" style="color: rgba(255,255,255,0.62); font-size: 9px; text-align: center; margin-top: 4px;">Top: No one yet</div>
+                    <div style="display: none;">
+                        <span id="statsVisitors">0</span>
+                        <span id="statsPlayers">0</span>
+                        <span id="statsRuns">0</span>
+                        <span id="statsHighScore">0</span>
+                    </div>
+                </div>
+            </details>
+
+            <div id="firstMissionGuide" class="start-mission-guide" style="display: none;">
+                Hold = in, release = out. Survive 24s to reach Pilot.
+            </div>
+
+            <div class="planet-preview">
+                <div class="planet-dot current"></div>
+                <div class="planet-dot"></div>
+                <div class="planet-dot"></div>
+            </div>
         </div>
     </div>
 
@@ -742,6 +955,7 @@
         const paceHintLineEl = document.getElementById('paceHintLine');
         const paceButtons = Array.from(document.querySelectorAll('.pace-btn'));
         const backendStatusLineEl = document.getElementById('backendStatusLine');
+        const startUtilityPanelEl = document.getElementById('startUtilityPanel');
         const publicStatsPanelEl = document.getElementById('publicStatsPanel');
         const statsVisitorsEl = document.getElementById('statsVisitors');
         const statsPlayersEl = document.getElementById('statsPlayers');
@@ -1093,11 +1307,12 @@
             if (setupHintEl) {
                 if (currentStep === 'name') setupHintEl.textContent = 'Enter your name to continue.';
                 else if (currentStep === 'privacy') setupHintEl.textContent = 'Tap Save Privacy once.';
-                else setupHintEl.textContent = 'Ready. Tap START.';
+                else setupHintEl.textContent = 'Ready. Tap Start Mission.';
             }
 
             if (nameSetupEl) nameSetupEl.classList.toggle('focus-pulse', currentStep === 'name');
             if (consentPanelEl) consentPanelEl.classList.toggle('focus-pulse', currentStep === 'privacy');
+            if (startUtilityPanelEl && currentStep === 'privacy') startUtilityPanelEl.open = true;
 
             if (consentStatusLineEl) {
                 if (hasPrivacySaved) {
@@ -1115,7 +1330,7 @@
 
             if (startBtnEl) {
                 startBtnEl.classList.toggle('locked', currentStep !== 'done');
-                startBtnEl.textContent = 'START';
+                startBtnEl.textContent = 'Start Mission';
             }
         }
 
@@ -1131,6 +1346,7 @@
                 return;
             }
             if (step === 'privacy') {
+                if (startUtilityPanelEl) startUtilityPanelEl.open = true;
                 if (consentPanelEl) {
                     consentPanelEl.style.display = 'block';
                     consentPanelEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1594,7 +1810,7 @@
             const paceKey = playerProgress.leaderboardPace || 'medium';
             if (welcomeLineEl) {
                 welcomeLineEl.textContent = hasName
-                    ? ('Welcome back, ' + playerProgress.playerName)
+                    ? (playerProgress.playerName)
                     : 'Pilot name';
             }
             if (playerNameInputEl) {
@@ -1613,8 +1829,8 @@
                 firstMissionGuideEl.style.display = playerProgress.totalRuns === 0 ? 'block' : 'none';
             }
             if (paceHintLineEl) {
-                const label = paceKey === 'easy' ? 'Pace: Easy' : (paceKey === 'hard' ? 'Pace: Hard' : 'Pace: Medium');
-                paceHintLineEl.textContent = label;
+                const label = paceKey === 'easy' ? 'Easy' : (paceKey === 'hard' ? 'Hard' : 'Medium');
+                paceHintLineEl.textContent = 'Difficulty: ' + label;
             }
             paceButtons.forEach((btn) => {
                 const selected = btn.dataset.pace === paceKey;
