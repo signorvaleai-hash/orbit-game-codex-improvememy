@@ -1257,6 +1257,101 @@
             return normalized.slice(0, 5);
         }
 
+        const syntheticLeaderboardNamePool = [
+            'Nova Arc', 'Luna Drift', 'Orion Flux', 'Astra Vex', 'Cosmo Ray',
+            'Helio Prime', 'Vega Pulse', 'Titan Bloom', 'Starlite K', 'Nebula Fox',
+            'Solar Rune', 'Atlas Wing', 'Comet Vale', 'Ion Crest', 'Quasar Jet'
+        ];
+
+        function escapeHtml(value) {
+            return String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function buildSyntheticGlobalEntries(realEntries, neededCount, baselineSeconds) {
+            const entries = [];
+            const usedNames = new Set(realEntries.map((entry) => sanitizePlayerName(entry.playerName).toLowerCase()));
+            const usedMultipliers = new Set();
+            const base = Math.max(3, Math.floor(Number(baselineSeconds || 0)));
+            let attempts = 0;
+
+            while (entries.length < neededCount && attempts < 300) {
+                attempts += 1;
+                const multiplier = 10 + Math.floor(Math.random() * 21); // 10x..30x
+                if (usedMultipliers.has(multiplier)) continue;
+                usedMultipliers.add(multiplier);
+
+                const sourceName = syntheticLeaderboardNamePool[Math.floor(Math.random() * syntheticLeaderboardNamePool.length)];
+                let candidateName = sourceName;
+                let suffix = 2;
+                while (usedNames.has(candidateName.toLowerCase())) {
+                    candidateName = sourceName + ' ' + suffix;
+                    suffix += 1;
+                }
+                usedNames.add(candidateName.toLowerCase());
+
+                const survivalSeconds = Math.max(30, base * multiplier + entries.length);
+                const score = Math.max(120, Math.floor(survivalSeconds * (10 + Math.random() * 4)));
+                entries.push({
+                    profileId: '',
+                    playerName: candidateName,
+                    score,
+                    survivalSeconds,
+                    simulated: true,
+                    multiplier
+                });
+            }
+
+            return entries;
+        }
+
+        function renderGlobalLeaderboardRows(entries, displayName, userProfileId) {
+            const bgByRank = [
+                'rgba(255,215,120,0.14)',
+                'rgba(180,225,255,0.12)',
+                'rgba(255,193,160,0.10)',
+                'rgba(100,200,255,0.08)',
+                'rgba(100,200,255,0.06)'
+            ];
+            const borderByRank = [
+                'rgba(255,215,120,0.45)',
+                'rgba(180,225,255,0.36)',
+                'rgba(255,193,160,0.3)',
+                'rgba(100,200,255,0.24)',
+                'rgba(100,200,255,0.2)'
+            ];
+            const rankLabel = ['🥇', '🥈', '🥉', '#4', '#5'];
+            const safeDisplay = sanitizePlayerName(displayName).toLowerCase();
+
+            return entries.map((entry, idx) => {
+                const safeName = sanitizePlayerName(entry.playerName) || ('Pilot ' + (idx + 1));
+                const isUser = (!!userProfileId && entry.profileId === userProfileId) || safeName.toLowerCase() === safeDisplay;
+                const timeLabel = Math.max(0, Math.floor(Number(entry.survivalSeconds || 0))) + 's';
+                const detail = entry.simulated
+                    ? ('Sim ' + entry.multiplier + 'x')
+                    : 'Live';
+                const bg = bgByRank[idx] || bgByRank[bgByRank.length - 1];
+                const border = borderByRank[idx] || borderByRank[borderByRank.length - 1];
+                const userRing = isUser ? '; box-shadow: 0 0 0 1px rgba(255,211,106,0.45)' : '';
+                const nameColor = isUser ? '#ffe08a' : '#ffffff';
+                const scoreColor = idx === 0 ? '#ffe08a' : '#d6f0ff';
+                return '<div style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 8px; border-radius:8px; border:1px solid ' + border + '; background:' + bg + userRing + '; margin-bottom:5px;">'
+                    + '<div style="display:flex; align-items:center; gap:7px; min-width:0;">'
+                    + '<span style="font-size:11px; color:#9ed9ff;">' + rankLabel[idx] + '</span>'
+                    + '<span style="font-size:11px; color:' + nameColor + '; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(safeName) + '</span>'
+                    + '</div>'
+                    + '<div style="text-align:right; flex-shrink:0;">'
+                    + '<div style="font-size:11px; color:' + scoreColor + '; font-weight:600;">' + Math.max(0, Math.floor(Number(entry.score || 0))) + '</div>'
+                    + '<div style="font-size:9px; color:rgba(255,255,255,0.62);">' + timeLabel + ' · ' + detail + '</div>'
+                    + '</div>'
+                    + '</div>';
+            }).join('');
+        }
+
         function getSimLeaderboardEntries() {
             const simScores = Array.isArray(playerProgress && playerProgress.simTop5) ? playerProgress.simTop5.slice(0, 5) : [];
             return simScores.map((scoreValue, i) => ({
@@ -1272,16 +1367,60 @@
             const displayName = playerProgress.playerName || 'Pilot';
             const cloudEntries = Array.isArray(playerProgress.cloudTopEntries) ? playerProgress.cloudTopEntries.slice(0, 5) : [];
             const useCloudBoard = cloudEntries.length > 0;
-            const entries = useCloudBoard ? cloudEntries : getSimLeaderboardEntries();
+            let entries = [];
+            let usedSyntheticFill = false;
 
-            leaderboardTop5El.style.whiteSpace = 'pre-line';
-            leaderboardTop5El.textContent = entries.length > 0
-                ? entries.map((entry, i) => (i + 1) + '. ' + entry.playerName + ' - ' + entry.score).join('\n')
-                : 'No scored runs yet';
+            if (useCloudBoard) {
+                const realEntries = cloudEntries.map((entry) => ({
+                    profileId: String(entry.profileId || ''),
+                    playerName: sanitizePlayerName(entry.playerName) || 'Pilot',
+                    score: Math.max(0, Math.floor(Number(entry.score || 0))),
+                    survivalSeconds: Math.max(0, Math.floor(Number(entry.survivalSeconds || (Number(entry.score || 0) / 10)))),
+                    simulated: false,
+                    multiplier: 0
+                })).filter((entry) => entry.score > 0);
 
-            if (useCloudBoard && playerProgress.cloudRank > 0 && playerProgress.cloudField > 0) {
-                leaderboardUserRankEl.textContent = displayName + ' is #' + playerProgress.cloudRank + ' of ' + playerProgress.cloudField;
+                entries = realEntries.slice(0, 5);
+                if (entries.length < 5) {
+                    const baseline = Math.max(3, Math.floor(Number(survivalTime || 0)), Math.floor(Number(playerProgress.bestSurvival || 0)), 6);
+                    const fill = buildSyntheticGlobalEntries(entries, 5 - entries.length, baseline);
+                    if (fill.length > 0) {
+                        usedSyntheticFill = true;
+                        entries = entries.concat(fill);
+                    }
+                }
+
+                entries.sort((a, b) => {
+                    if (b.score !== a.score) return b.score - a.score;
+                    if (b.survivalSeconds !== a.survivalSeconds) return b.survivalSeconds - a.survivalSeconds;
+                    return a.playerName.localeCompare(b.playerName);
+                });
+                entries = entries.slice(0, 5);
+
+                leaderboardTop5El.style.whiteSpace = 'normal';
+                leaderboardTop5El.innerHTML = entries.length > 0
+                    ? renderGlobalLeaderboardRows(entries, displayName, String(playerProgress.profileId || ''))
+                    : 'No scored runs yet';
+
+                const fieldSize = Math.max(entries.length, Number(playerProgress.cloudField || 0), usedSyntheticFill ? 5 : 0);
+                const profileId = String(playerProgress.profileId || '');
+                const localBoardRank = entries.findIndex((entry) => (profileId && entry.profileId === profileId) || sanitizePlayerName(entry.playerName).toLowerCase() === sanitizePlayerName(displayName).toLowerCase());
+                let userRankValue = Math.max(0, Number(playerProgress.cloudRank || 0));
+                if (localBoardRank >= 0) {
+                    userRankValue = userRankValue > 0 ? Math.max(userRankValue, localBoardRank + 1) : (localBoardRank + 1);
+                }
+                if (userRankValue > 0 && fieldSize > 0) {
+                    leaderboardUserRankEl.textContent = displayName + ' is #' + userRankValue + ' of ' + fieldSize + (usedSyntheticFill ? ' (field expanded)' : '');
+                } else {
+                    leaderboardUserRankEl.textContent = displayName + ' is climbing the global board';
+                }
             } else {
+                entries = getSimLeaderboardEntries();
+                leaderboardTop5El.style.whiteSpace = 'pre-line';
+                leaderboardTop5El.textContent = entries.length > 0
+                    ? entries.map((entry, i) => (i + 1) + '. ' + entry.playerName + ' - ' + entry.score).join('\n')
+                    : 'No scored runs yet';
+
                 const fallbackRank = Math.max(1, Number(playerProgress.lastSimRank || 1));
                 const fallbackField = Math.max(fallbackRank, Number(playerProgress.lastSimField || 1));
                 leaderboardUserRankEl.textContent = displayName + ' is #' + fallbackRank + ' of ' + fallbackField + ' (offline)';
@@ -1289,7 +1428,7 @@
 
             if (leaderboardTitleEl) {
                 leaderboardTitleEl.textContent = useCloudBoard
-                    ? 'Global Top 5 (Real Players)'
+                    ? (usedSyntheticFill ? 'Global Top 5 (Real + Simulated Fill)' : 'Global Top 5 (Real Players)')
                     : ('Sector Top 5 (Offline Sim • ' + formatPaceLabel(playerProgress.leaderboardPace) + ' Pace)');
             }
         }
