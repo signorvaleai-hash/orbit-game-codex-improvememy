@@ -826,10 +826,10 @@
             </div>
 
             <button class="btn" id="startBtn">Start Mission</button>
-            <div id="quickStartHint" class="quick-start-hint">How to play: Hold anywhere = move in. Release = move out.</div>
+            <div id="quickStartHint" class="quick-start-hint">Hold too long = HEAT rises (sun burns you). Release too long = GRAVITY drops (void pulls you out).</div>
 
             <div id="firstMissionGuide" class="start-mission-guide">
-                Avoid debris. Survive 24s to reach Pilot.
+                Keep both bars safe: high heat burns you, low gravity loses you in space.
             </div>
 
             <div class="mode-select">
@@ -978,7 +978,7 @@
         <button class="btn" id="victoryRestart">PLAY AGAIN</button>
     </div>
 
-    <div id="tutorial">🖐️ Hold anywhere to move IN<br>Lift finger to move OUT. Avoid debris.</div>
+    <div id="tutorial">🖐️ Hold = move in (HEAT rises). Release = move out (GRAVITY drops).<br>Too much heat burns you. Too little gravity loses you to the void.</div>
 
     <script>
         // Core elements
@@ -2080,13 +2080,13 @@
                 nameRequirementLineEl.style.color = hasName ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.72)';
             }
             if (quickStartHintEl) {
-                quickStartHintEl.textContent = 'How to play: Hold anywhere = move in. Release = move out.';
+                quickStartHintEl.textContent = 'Hold too long = HEAT rises (sun burns you). Release too long = GRAVITY drops (void pulls you out).';
             }
             if (firstMissionGuideEl) {
                 firstMissionGuideEl.style.display = 'block';
                 firstMissionGuideEl.textContent = playerProgress.totalRuns === 0
-                    ? 'First run goal: survive 24s to reach Pilot.'
-                    : 'Goal: survive longer and beat your best time.';
+                    ? 'First run goal: survive 24s and keep HEAT/GRAVITY balanced.'
+                    : 'Balance both bars: high heat burns you, low gravity loses you in space.';
             }
             if (paceHintLineEl) {
                 const label = paceKey === 'easy' ? 'Easy' : (paceKey === 'hard' ? 'Hard' : 'Medium');
@@ -2152,7 +2152,6 @@
             if (e && e.preventDefault) e.preventDefault();
             if (deathAnimation.active) return; // Block input during death
             isHolding = true;
-            if (tutorialEl) tutorialEl.style.display = 'none';
         }
 
         function handleEnd(e) {
@@ -2167,6 +2166,27 @@
             canvas.addEventListener('mousedown', handleStart);
             canvas.addEventListener('mouseup', handleEnd);
             canvas.addEventListener('mouseleave', handleEnd);
+        }
+
+        function updatePlayingTutorialMessage() {
+            if (!tutorialEl || tutorialEl.style.display === 'none') return;
+            if (planet.heat >= 85) {
+                tutorialEl.innerHTML = '🔥 HEAT CRITICAL: release now to move outward.<br>Holding too long near the sun burns the planet.';
+                return;
+            }
+            if (planet.gravity <= 20) {
+                tutorialEl.innerHTML = '🌌 GRAVITY CRITICAL: hold now to move inward.<br>Releasing too long makes the planet drift into the void.';
+                return;
+            }
+            if (planet.heat >= 70) {
+                tutorialEl.innerHTML = '⚠️ HEAT rising: ease off hold and move outward.<br>Too much heat = sun burn.';
+                return;
+            }
+            if (planet.gravity <= 35) {
+                tutorialEl.innerHTML = '⚠️ GRAVITY dropping: hold a bit to move inward.<br>Too little gravity = lost to void.';
+                return;
+            }
+            tutorialEl.innerHTML = '🖐️ Hold = move in (HEAT rises). Release = move out (GRAVITY drops).<br>Balance both bars to survive.';
         }
 
         // Debris
@@ -2918,6 +2938,7 @@
                 // UI
                 if (heatFill) heatFill.style.width = planet.heat + '%';
                 if (gravityFill) gravityFill.style.width = planet.gravity + '%';
+                updatePlayingTutorialMessage();
 
                 // Orbit
                 const orbitStep = 0.018 * (180 / planet.radius);
