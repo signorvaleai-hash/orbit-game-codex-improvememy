@@ -456,11 +456,12 @@
             flex-direction: column;
             gap: 14px;
             padding-bottom: calc(20px + var(--safe-bottom));
+            text-align: center;
         }
 
         .start-hero .title {
             margin-bottom: 10px;
-            text-align: left;
+            text-align: center;
             color: rgba(255, 255, 255, 0.94);
             font-size: clamp(42px, 8vw, 88px);
             font-weight: 500;
@@ -469,7 +470,7 @@
 
         .start-hero .subtitle {
             margin-bottom: 0;
-            text-align: left;
+            text-align: center;
             max-width: none;
             color: rgba(255, 255, 255, 0.56);
             font-size: clamp(16px, 2.2vw, 34px);
@@ -484,7 +485,7 @@
         }
 
         #startScreen .setup-hint {
-            text-align: left;
+            text-align: center;
             color: rgba(215, 241, 255, 0.86);
             font-size: clamp(13px, 1.8vw, 24px);
         }
@@ -505,24 +506,54 @@
             color: rgba(255, 255, 255, 0.92);
             font-size: clamp(16px, 2.4vw, 30px);
             line-height: 1.2;
+            text-align: center;
+        }
+
+        .name-input-wrap {
+            position: relative;
+            border-radius: 14px;
+            padding: 1px;
+            background: linear-gradient(120deg, rgba(100, 200, 255, 0.45), rgba(168, 85, 247, 0.35), rgba(100, 200, 255, 0.45));
+            background-size: 180% 180%;
+            transition: box-shadow 220ms ease;
+        }
+
+        .name-input-wrap::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 14px;
+            border: 1px solid rgba(100, 200, 255, 0.35);
+            pointer-events: none;
         }
 
         #playerNameInput {
             width: 100%;
             padding: 12px 16px;
             border-radius: 14px;
-            border: 1px solid rgba(100, 200, 255, 0.42);
+            border: 0;
             background: rgba(0, 0, 0, 0.32);
             color: #fff;
-            text-align: left;
+            text-align: center;
             font-size: clamp(18px, 2.6vw, 30px);
             line-height: 1.25;
+        }
+
+        .name-input-wrap.focus-pulse,
+        .name-input-wrap:focus-within {
+            animation: pilotLineFlow 2.2s linear infinite;
+            box-shadow: 0 0 0 1px rgba(126, 197, 255, 0.48), 0 0 16px rgba(104, 180, 255, 0.2);
+        }
+
+        @keyframes pilotLineFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 100% 50%; }
         }
 
         .start-note {
             color: rgba(255, 255, 255, 0.66);
             font-size: clamp(12px, 1.7vw, 20px);
-            text-align: left;
+            text-align: center;
         }
 
         #startScreen .mode-select {
@@ -582,6 +613,7 @@
             color: rgba(255, 255, 255, 0.58);
             font-size: clamp(14px, 2vw, 24px);
             line-height: 1.3;
+            text-align: center;
         }
 
         .start-utility {
@@ -610,6 +642,7 @@
             font-size: clamp(11px, 1.6vw, 18px);
             margin-bottom: 8px;
             line-height: 1.3;
+            text-align: center;
         }
 
         .start-panel {
@@ -629,7 +662,7 @@
             color: #d7f1ff;
             font-size: clamp(11px, 1.6vw, 17px);
             line-height: 1.35;
-            text-align: left;
+            text-align: center;
         }
 
         @media (max-width: 640px) {
@@ -741,7 +774,9 @@
 
             <div id="nameSetup" class="start-name">
                 <label id="welcomeLine" class="start-label" for="playerNameInput">Pilot name</label>
-                <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter pilot name">
+                <div id="nameInputWrap" class="name-input-wrap">
+                    <input id="playerNameInput" type="text" maxlength="18" placeholder="Enter pilot name">
+                </div>
                 <div id="nameRequirementLine" class="start-note">Required to start.</div>
             </div>
 
@@ -773,8 +808,7 @@
                         <span>Crash reports</span>
                         <input id="consentCrash" type="checkbox">
                     </label>
-                    <button id="consentSaveBtn" style="width: 100%; border: 1px solid rgba(100,200,255,0.3); background: rgba(100,200,255,0.16); color: #d7f1ff; padding: 8px 10px; border-radius: 8px; font-size: 10px; text-transform: uppercase; cursor: pointer;">Save Privacy</button>
-                    <div id="consentStatusLine" style="color: #ffd36a; font-size: 9px; text-align: center; margin-top: 5px;">Tap save once.</div>
+                    <div id="consentStatusLine" style="color: #9bf0b6; font-size: 9px; text-align: center; margin-top: 5px;">Auto-saved.</div>
                 </div>
 
                 <div id="publicStatsPanel" class="start-panel" style="margin-top: 8px;">
@@ -944,6 +978,7 @@
         const setupHintEl = document.getElementById('setupHint');
         const welcomeLineEl = document.getElementById('welcomeLine');
         const nameSetupEl = document.getElementById('nameSetup');
+        const nameInputWrapEl = document.getElementById('nameInputWrap');
         const playerNameInputEl = document.getElementById('playerNameInput');
         const nameRequirementLineEl = document.getElementById('nameRequirementLine');
         const firstMissionGuideEl = document.getElementById('firstMissionGuide');
@@ -966,7 +1001,6 @@
         const consentPanelEl = document.getElementById('consentPanel');
         const consentAnalyticsEl = document.getElementById('consentAnalytics');
         const consentCrashEl = document.getElementById('consentCrash');
-        const consentSaveBtnEl = document.getElementById('consentSaveBtn');
         const consentStatusLineEl = document.getElementById('consentStatusLine');
 
         // Audio
@@ -1285,12 +1319,12 @@
             if (!playerProgress) return;
             const typedName = sanitizePlayerName(playerNameInputEl ? playerNameInputEl.value : '');
             const hasName = !!(playerProgress.playerName || typedName);
-            const hasPrivacySaved = !!playerProgress.consentSet;
+            const hasPrivacySaved = true;
 
             if (hasName && forcedGuideStep === 'name') forcedGuideStep = '';
             if (hasPrivacySaved && forcedGuideStep === 'privacy') forcedGuideStep = '';
 
-            const currentStep = forcedGuideStep || (!hasName ? 'name' : (!hasPrivacySaved ? 'privacy' : 'done'));
+            const currentStep = forcedGuideStep || (!hasName ? 'name' : 'done');
 
             if (setupGuideTitleEl) setupGuideTitleEl.textContent = '';
 
@@ -1301,31 +1335,23 @@
 
             if (setupStepPrivacyEl) {
                 setupStepPrivacyEl.className = 'setup-step ' + (hasPrivacySaved ? 'done' : 'pending');
-                setupStepPrivacyEl.textContent = hasPrivacySaved ? '2. Privacy saved' : '2. Privacy';
+                setupStepPrivacyEl.textContent = '2. Privacy auto-saved';
             }
 
             if (setupHintEl) {
                 if (currentStep === 'name') setupHintEl.textContent = 'Enter your name to continue.';
-                else if (currentStep === 'privacy') setupHintEl.textContent = 'Tap Save Privacy once.';
+                else if (currentStep === 'privacy') setupHintEl.textContent = 'Privacy is auto-saved.';
                 else setupHintEl.textContent = 'Ready. Tap Start Mission.';
             }
 
-            if (nameSetupEl) nameSetupEl.classList.toggle('focus-pulse', currentStep === 'name');
+            if (nameSetupEl) nameSetupEl.classList.remove('focus-pulse');
+            if (nameInputWrapEl) nameInputWrapEl.classList.toggle('focus-pulse', currentStep === 'name');
             if (consentPanelEl) consentPanelEl.classList.toggle('focus-pulse', currentStep === 'privacy');
             if (startUtilityPanelEl && currentStep === 'privacy') startUtilityPanelEl.open = true;
 
             if (consentStatusLineEl) {
-                if (hasPrivacySaved) {
-                    consentStatusLineEl.style.color = '#9bf0b6';
-                    consentStatusLineEl.textContent = 'Saved.';
-                } else {
-                    consentStatusLineEl.style.color = '#ffd36a';
-                    consentStatusLineEl.textContent = 'Tap save once.';
-                }
-            }
-
-            if (consentSaveBtnEl) {
-                consentSaveBtnEl.textContent = hasPrivacySaved ? 'Update Privacy' : 'Save Privacy';
+                consentStatusLineEl.style.color = '#9bf0b6';
+                consentStatusLineEl.textContent = 'Auto-saved.';
             }
 
             if (startBtnEl) {
@@ -1447,6 +1473,33 @@
             } catch (e) {
                 setBackendStatus('Cloud sync: consent pending', false);
             }
+        }
+
+        function autoSaveConsent(force = false) {
+            if (!playerProgress) return false;
+            const analyticsAllowed = !!(consentAnalyticsEl && consentAnalyticsEl.checked);
+            const crashAllowed = !!(consentCrashEl && consentCrashEl.checked);
+            const changed = force ||
+                !playerProgress.consentSet ||
+                playerProgress.analyticsAllowed !== analyticsAllowed ||
+                playerProgress.crashAllowed !== crashAllowed;
+
+            playerProgress.analyticsAllowed = analyticsAllowed;
+            playerProgress.crashAllowed = crashAllowed;
+            playerProgress.consentSet = true;
+
+            if (changed) {
+                savePlayerData();
+                syncConsentToCloud();
+                initOptionalTelemetry();
+                sendAnalyticsEvent('consent_updated', {
+                    analyticsAllowed: playerProgress.analyticsAllowed,
+                    crashAllowed: playerProgress.crashAllowed,
+                    mode: 'auto'
+                });
+            }
+
+            return changed;
         }
 
         async function beginServerRunSession() {
@@ -1677,7 +1730,7 @@
             if (!leaderboardPaceProfiles[playerProgress.leaderboardPace]) playerProgress.leaderboardPace = 'medium';
             playerProgress.analyticsAllowed = !!playerProgress.analyticsAllowed;
             playerProgress.crashAllowed = !!playerProgress.crashAllowed;
-            playerProgress.consentSet = !!playerProgress.consentSet;
+            playerProgress.consentSet = true;
 
             const todayKey = getDayKey();
             if (playerProgress.todayKey !== todayKey) {
@@ -1687,6 +1740,7 @@
             dailyChallenge = selectDailyChallenge(todayKey);
             savePlayerData();
             updateStartScreenProfileUI();
+            autoSaveConsent(true);
             renderPublicStats();
             renderLeaderboardFromProgress();
             setBackendStatus('Cloud sync: checking...', false);
@@ -2278,15 +2332,6 @@
                 updateStartScreenProfileUI();
             }
 
-            if (!playerProgress.consentSet) {
-                if (nameRequirementLineEl) {
-                    nameRequirementLineEl.textContent = 'Please save privacy first.';
-                    nameRequirementLineEl.style.color = '#ffd36a';
-                }
-                focusOnboardingStep('privacy');
-                return;
-            }
-
             forcedGuideStep = '';
             updateOnboardingGuide();
 
@@ -2542,24 +2587,6 @@
                 sendAnalyticsEvent('pace_changed', { pace });
             });
         });
-        if (consentSaveBtnEl) {
-            consentSaveBtnEl.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (!playerProgress) loadPlayerData();
-                playerProgress.analyticsAllowed = !!(consentAnalyticsEl && consentAnalyticsEl.checked);
-                playerProgress.crashAllowed = !!(consentCrashEl && consentCrashEl.checked);
-                playerProgress.consentSet = true;
-                forcedGuideStep = '';
-                savePlayerData();
-                updateStartScreenProfileUI();
-                syncConsentToCloud();
-                initOptionalTelemetry();
-                sendAnalyticsEvent('consent_updated', {
-                    analyticsAllowed: playerProgress.analyticsAllowed,
-                    crashAllowed: playerProgress.crashAllowed
-                });
-            });
-        }
         if (playerNameInputEl) {
             playerNameInputEl.addEventListener('input', () => {
                 if (forcedGuideStep === 'name') forcedGuideStep = '';
@@ -2567,10 +2594,16 @@
             });
         }
         if (consentAnalyticsEl) {
-            consentAnalyticsEl.addEventListener('change', () => updateOnboardingGuide());
+            consentAnalyticsEl.addEventListener('change', () => {
+                autoSaveConsent();
+                updateOnboardingGuide();
+            });
         }
         if (consentCrashEl) {
-            consentCrashEl.addEventListener('change', () => updateOnboardingGuide());
+            consentCrashEl.addEventListener('change', () => {
+                autoSaveConsent();
+                updateOnboardingGuide();
+            });
         }
         if (detailsToggleBtnEl) {
             detailsToggleBtnEl.addEventListener('click', (e) => {
