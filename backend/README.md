@@ -31,7 +31,7 @@ Defaults:
 - `POST /v1/profile/register`
   - body: `{ profileId?, name, deviceId }`
 - `POST /v1/visit`
-  - body: `{ deviceId, referrer?, landingPath?, utmSource?, utmMedium?, utmCampaign?, userAgent?, timezone?, language? }`
+  - body: `{ deviceId, referrer?, landingPath?, utmSource?, utmMedium?, utmCampaign?, challengeId?, challengeFrom?, challengeTarget?, userAgent?, timezone?, language? }`
 - `GET /v1/stats/public`
 - `POST /v1/consent`
   - body: `{ profileId, analyticsAllowed, crashAllowed }`

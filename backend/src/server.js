@@ -576,7 +576,8 @@ function parseOptionalText(value, maxLen = 255) {
   return String(value || '').trim().slice(0, maxLen);
 }
 
-function deriveTrafficSource({ referrerHost, requestHost, utmSource }) {
+function deriveTrafficSource({ referrerHost, requestHost, utmSource, hasChallengeInvite }) {
+  if (hasChallengeInvite) return { sourceType: 'challenge', sourceLabel: 'challenge_invite' };
   const cleanUtm = parseOptionalText(utmSource, 64);
   if (cleanUtm) return { sourceType: 'utm', sourceLabel: 'utm:' + cleanUtm.toLowerCase() };
   if (!referrerHost) return { sourceType: 'direct', sourceLabel: 'direct' };
@@ -677,10 +678,14 @@ function route(req, res) {
         const utmSource = parseOptionalText(body.utmSource, 64);
         const utmMedium = parseOptionalText(body.utmMedium, 64);
         const utmCampaign = parseOptionalText(body.utmCampaign, 128);
+        const challengeId = parseOptionalText(body.challengeId, 64);
+        const challengeFrom = parseOptionalText(body.challengeFrom, 64);
+        const challengeTarget = Math.max(0, Math.floor(Number(body.challengeTarget || 0)));
+        const hasChallengeInvite = !!challengeId || !!challengeFrom || challengeTarget > 0;
         const userAgent = parseOptionalText(body.userAgent || req.headers['user-agent'], 255);
         const timezone = parseOptionalText(body.timezone, 64);
         const language = parseOptionalText(body.language || req.headers['accept-language'], 64);
-        const source = deriveTrafficSource({ referrerHost, requestHost, utmSource });
+        const source = deriveTrafficSource({ referrerHost, requestHost, utmSource, hasChallengeInvite });
         query.upsertVisitor.run(deviceId, ts, ts);
         query.insertTrafficEvent.run(
           randomUUID(),

@@ -241,14 +241,22 @@
             width: 100%;
             display: flex;
             justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
             z-index: 30;
             margin-top: 10px;
             pointer-events: none;
         }
 
-        #gameOverActionBar #restartBtn {
+        #gameOverActionBar .btn {
             pointer-events: auto;
             min-width: 220px;
+        }
+
+        #gameOverActionBar #shareBtn {
+            background: rgba(18, 34, 64, 0.9);
+            border: 1px solid rgba(100, 200, 255, 0.38);
+            color: #bfe8ff;
         }
 
         .title {
@@ -831,6 +839,7 @@
             <div id="firstMissionGuide" class="start-mission-guide">
                 Keep both bars safe: high heat burns you, low gravity loses you in space.
             </div>
+            <div id="incomingChallengeGuide" class="start-mission-guide" style="display: none; margin-top: 8px; border-color: rgba(255,215,120,0.35); background: rgba(255,215,120,0.1); color: #ffe7a7;"></div>
 
             <div class="mode-select">
                 <div class="mode-btn selected">
@@ -964,8 +973,10 @@
                     </div>
                 </div>
             </div>
+            <div id="shareFeedbackLine" style="color: rgba(191,232,255,0.82); font-size: 11px; text-align: center; min-height: 16px; margin-top: -5px;"></div>
 
             <div id="gameOverActionBar">
+                <button class="btn" id="shareBtn">CHALLENGE A FRIEND</button>
                 <button class="btn" id="restartBtn">RETRY</button>
             </div>
         </div>
@@ -1031,8 +1042,11 @@
         const nameRequirementLineEl = document.getElementById('nameRequirementLine');
         const quickStartHintEl = document.getElementById('quickStartHint');
         const firstMissionGuideEl = document.getElementById('firstMissionGuide');
+        const incomingChallengeGuideEl = document.getElementById('incomingChallengeGuide');
         const playerCalloutEl = document.getElementById('playerCallout');
+        const shareFeedbackLineEl = document.getElementById('shareFeedbackLine');
         const startBtnEl = document.getElementById('startBtn');
+        const shareBtnEl = document.getElementById('shareBtn');
         const leaderboardTitleEl = document.getElementById('leaderboardTitle');
         const leaderboardTop5El = document.getElementById('leaderboardTop5');
         const leaderboardUserRankEl = document.getElementById('leaderboardUserRank');
@@ -1106,6 +1120,18 @@
         let activeServerSessionId = '';
         let syncingQueuedRuns = false;
         let backendOnline = false;
+        let activeChallenge = null;
+        let challengeVisitTracked = false;
+        let challengeFirstRunTracked = false;
+        let challengeBeatTracked = false;
+        let lastRunSnapshot = {
+            survivalSeconds: 0,
+            score: 0,
+            rankName: 'Rookie',
+            nextRankName: 'Pilot',
+            remainingToNext: 24,
+            planet: 1
+        };
 
         const runtimeConfig = window.ORBIT_RUNTIME || {};
         const BACKEND_BASE = String(runtimeConfig.backendBase || 'http://127.0.0.1:8787').replace(/\/+$/, '');
@@ -1272,6 +1298,57 @@
                 .replace(/\s+/g, ' ')
                 .trim()
                 .slice(0, 18);
+        }
+
+        function parseIncomingChallenge() {
+            const params = new URLSearchParams(window.location.search || '');
+            const targetRaw = Number(params.get('c') || 0);
+            const targetSeconds = Math.max(0, Math.floor(targetRaw));
+            const challengerName = sanitizePlayerName(params.get('p') || '');
+            const challengerProfileId = String(params.get('pid') || '').slice(0, 128);
+            const challengeId = String(params.get('rid') || '').slice(0, 64);
+            const isValid = targetSeconds >= 5;
+            if (!isValid) return null;
+            return {
+                id: challengeId || ('challenge-' + targetSeconds + '-' + (challengerName || 'pilot').toLowerCase()),
+                targetSeconds,
+                challengerName: challengerName || 'Pilot',
+                challengerProfileId
+            };
+        }
+
+        function buildChallengeSharePayload() {
+            const challengerName = sanitizePlayerName((playerProgress && playerProgress.playerName) || 'Pilot') || 'Pilot';
+            const targetSeconds = Math.max(
+                5,
+                Math.floor(Number(lastRunSnapshot.survivalSeconds || survivalTime || 0)),
+                Math.floor(Number(playerProgress && playerProgress.bestSurvival ? playerProgress.bestSurvival : 0))
+            );
+            const shareUrl = new URL(window.location.origin + window.location.pathname);
+            shareUrl.searchParams.set('c', String(targetSeconds));
+            shareUrl.searchParams.set('p', challengerName);
+            if (playerProgress && playerProgress.profileId) {
+                shareUrl.searchParams.set('pid', String(playerProgress.profileId).slice(0, 128));
+            }
+            shareUrl.searchParams.set('rid', Date.now().toString(36));
+            shareUrl.searchParams.set('utm_source', 'challenge_share');
+            shareUrl.searchParams.set('utm_medium', 'social');
+            shareUrl.searchParams.set('utm_campaign', 'player_challenge');
+
+            const text = challengerName + ' survived ' + targetSeconds + 's in Orbital Defense. Beat this mission.';
+            return {
+                url: shareUrl.toString(),
+                targetSeconds,
+                challengerName,
+                title: 'Orbital Defense Challenge',
+                text
+            };
+        }
+
+        function setShareFeedback(message, isWarn = false) {
+            if (!shareFeedbackLineEl) return;
+            shareFeedbackLineEl.textContent = String(message || '');
+            shareFeedbackLineEl.style.color = isWarn ? '#ffd6a0' : 'rgba(191,232,255,0.82)';
         }
 
         function formatPaceLabel(paceKey) {
@@ -1608,6 +1685,9 @@
             try {
                 const params = new URLSearchParams(window.location.search || '');
                 const tz = (Intl && Intl.DateTimeFormat) ? (Intl.DateTimeFormat().resolvedOptions().timeZone || '') : '';
+                const challengeTarget = Math.max(0, Math.floor(Number(params.get('c') || 0)));
+                const challengeFrom = sanitizePlayerName(params.get('p') || '');
+                const challengeId = String(params.get('rid') || '').slice(0, 64);
                 await backendRequest('/v1/visit', 'POST', {
                     deviceId,
                     referrer: document.referrer || '',
@@ -1615,6 +1695,9 @@
                     utmSource: params.get('utm_source') || '',
                     utmMedium: params.get('utm_medium') || '',
                     utmCampaign: params.get('utm_campaign') || '',
+                    challengeId: challengeId || '',
+                    challengeTarget: challengeTarget > 0 ? challengeTarget : 0,
+                    challengeFrom: challengeFrom || '',
                     userAgent: navigator.userAgent || '',
                     timezone: tz,
                     language: navigator.language || ''
@@ -1654,6 +1737,7 @@
                 if (data && data.profileId) {
                     playerProgress.profileId = data.profileId;
                     savePlayerData();
+                    maybeTrackInviteVisit();
                     return data.profileId;
                 }
             } catch (e) {
@@ -1829,6 +1913,56 @@
             }
         }
 
+        function maybeTrackInviteVisit() {
+            if (!activeChallenge || challengeVisitTracked) return;
+            if (!playerProgress || !playerProgress.profileId) return;
+            challengeVisitTracked = true;
+            sendAnalyticsEvent('invite_visit', {
+                challengeId: activeChallenge.id,
+                challenger: activeChallenge.challengerName,
+                challengerProfileId: activeChallenge.challengerProfileId || '',
+                targetSeconds: activeChallenge.targetSeconds
+            });
+        }
+
+        async function shareChallenge() {
+            const payload = buildChallengeSharePayload();
+            sendAnalyticsEvent('share_click', {
+                challengeTargetSeconds: payload.targetSeconds,
+                score: Math.max(0, Math.floor(Number(lastRunSnapshot.score || 0))),
+                survivalSeconds: Math.max(0, Math.floor(Number(lastRunSnapshot.survivalSeconds || 0)))
+            });
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: payload.title,
+                        text: payload.text,
+                        url: payload.url
+                    });
+                    setShareFeedback('Challenge shared.');
+                    sendAnalyticsEvent('share_success', { channel: 'native_share', challengeTargetSeconds: payload.targetSeconds });
+                    return;
+                } catch (error) {
+                    if (error && error.name === 'AbortError') {
+                        setShareFeedback('Share cancelled.', true);
+                        return;
+                    }
+                }
+            }
+
+            try {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(payload.url);
+                    setShareFeedback('Challenge link copied.');
+                    sendAnalyticsEvent('share_success', { channel: 'clipboard', challengeTargetSeconds: payload.targetSeconds });
+                    return;
+                }
+            } catch (e) {}
+
+            setShareFeedback('Copy this link: ' + payload.url, true);
+        }
+
         async function sendCrashReport(message, stack) {
             if (!playerProgress || !playerProgress.profileId || !playerProgress.crashAllowed) return;
             try {
@@ -1937,6 +2071,10 @@
                 playerProgress.todayKey = todayKey;
                 playerProgress.todayBest = 0;
             }
+            activeChallenge = parseIncomingChallenge();
+            challengeVisitTracked = false;
+            challengeFirstRunTracked = false;
+            challengeBeatTracked = false;
             dailyChallenge = selectDailyChallenge(todayKey);
             savePlayerData();
             updateStartScreenProfileUI();
@@ -2087,6 +2225,18 @@
                 firstMissionGuideEl.textContent = playerProgress.totalRuns === 0
                     ? 'First run goal: survive 24s and keep HEAT/GRAVITY balanced.'
                     : 'Balance both bars: high heat burns you, low gravity loses you in space.';
+            }
+            if (incomingChallengeGuideEl) {
+                const isOwnChallenge = !!(activeChallenge && playerProgress.profileId && activeChallenge.challengerProfileId && activeChallenge.challengerProfileId === playerProgress.profileId);
+                if (activeChallenge && !isOwnChallenge) {
+                    incomingChallengeGuideEl.style.display = 'block';
+                    incomingChallengeGuideEl.textContent = activeChallenge.challengerName + ' challenged you: beat ' + activeChallenge.targetSeconds + 's in one run.';
+                } else if (activeChallenge && isOwnChallenge) {
+                    incomingChallengeGuideEl.style.display = 'block';
+                    incomingChallengeGuideEl.textContent = 'This is your challenge link. Share it with friends to race your score.';
+                } else {
+                    incomingChallengeGuideEl.style.display = 'none';
+                }
             }
             if (paceHintLineEl) {
                 const label = paceKey === 'easy' ? 'Easy' : (paceKey === 'hard' ? 'Hard' : 'Medium');
@@ -2572,6 +2722,10 @@
             gameState = 'playing';
             if (startScreen) startScreen.style.display = 'none';
             if (tutorialEl) tutorialEl.style.display = (playerProgress && playerProgress.totalRuns < 3) ? 'block' : 'none';
+            if (tutorialEl && activeChallenge) {
+                tutorialEl.style.display = 'block';
+                tutorialEl.innerHTML = '🎯 Challenge active: beat ' + activeChallenge.targetSeconds + 's this run.<br>Hold = move in (HEAT rises), release = move out (GRAVITY drops).';
+            }
             startTime = Date.now();
             nextSpawnTime = Date.now() + 1500;
             fullReset();
@@ -2579,6 +2733,15 @@
             if (planetIndicator) planetIndicator.textContent = 'Planet ' + currentPlanet + ' of ' + totalPlanets;
             playTone(600, 0.2, 'sine', 0.15);
             sendAnalyticsEvent('run_start', { planet: currentPlanet, pace: playerProgress.leaderboardPace });
+            if (activeChallenge && !challengeFirstRunTracked) {
+                challengeFirstRunTracked = true;
+                sendAnalyticsEvent('invite_first_run', {
+                    challengeId: activeChallenge.id,
+                    challenger: activeChallenge.challengerName,
+                    challengerProfileId: activeChallenge.challengerProfileId || '',
+                    targetSeconds: activeChallenge.targetSeconds
+                });
+            }
             beginServerRunSession();
         }
 
@@ -2675,13 +2838,43 @@
             const avgRunSeconds = playerProgress.totalRuns > 0 ? playerProgress.lifetimeOrbitTime / playerProgress.totalRuns : 0;
             const runDistanceKm = (Math.floor(runOrbitDistance) / 1000).toFixed(1);
             const displayName = playerProgress.playerName || 'Pilot';
+            lastRunSnapshot = {
+                survivalSeconds: Math.floor(survivalTime),
+                score: computedScore,
+                rankName: rankInfo.current.name,
+                nextRankName: rankInfo.next ? rankInfo.next.name : rankInfo.current.name,
+                remainingToNext: rankInfo.next ? rankInfo.remaining : 0,
+                planet: currentPlanet
+            };
+            setShareFeedback('');
+
+            const ownChallenge = !!(activeChallenge && activeChallenge.challengerProfileId && playerProgress.profileId && activeChallenge.challengerProfileId === playerProgress.profileId);
+            const challengeDelta = activeChallenge ? Math.max(0, activeChallenge.targetSeconds - Math.floor(survivalTime)) : 0;
+            const challengeWon = !!(activeChallenge && !ownChallenge && challengeDelta === 0);
+            if (challengeWon && !challengeBeatTracked) {
+                challengeBeatTracked = true;
+                sendAnalyticsEvent('invite_beat_challenge', {
+                    challengeId: activeChallenge.id,
+                    challenger: activeChallenge.challengerName,
+                    challengerProfileId: activeChallenge.challengerProfileId || '',
+                    targetSeconds: activeChallenge.targetSeconds,
+                    survivalSeconds: Math.floor(survivalTime),
+                    score: computedScore
+                });
+            }
 
             if (gameOverScreen) gameOverScreen.style.display = 'flex';
             if (finalScoreEl) finalScoreEl.textContent = Math.floor(survivalTime) + 's on Planet ' + currentPlanet;
             if (deathReasonEl) deathReasonEl.textContent = deathAnimation.reason;
             if (tutorialEl) tutorialEl.style.display = 'none';
             if (playerCalloutEl) {
-                if (rankInfo.next) {
+                if (activeChallenge && !ownChallenge) {
+                    if (challengeWon) {
+                        playerCalloutEl.textContent = 'Challenge complete: you beat ' + activeChallenge.challengerName + ' (' + activeChallenge.targetSeconds + 's).';
+                    } else {
+                        playerCalloutEl.textContent = displayName + ', you need ' + challengeDelta + 's more to beat ' + activeChallenge.challengerName + '.';
+                    }
+                } else if (rankInfo.next) {
                     playerCalloutEl.textContent = displayName + ', you need ' + rankInfo.remaining + 's more to reach ' + rankInfo.next.name + '.';
                 } else {
                     playerCalloutEl.textContent = displayName + ', you reached max rank. Keep pushing your best score.';
@@ -2754,7 +2947,13 @@
             refreshPublicStats();
 
             setRetentionDetailsVisible(false);
-            sendAnalyticsEvent('run_finish', { score: computedScore, survival: Math.floor(survivalTime), planet: currentPlanet });
+            sendAnalyticsEvent('run_finish', {
+                score: computedScore,
+                survival: Math.floor(survivalTime),
+                planet: currentPlanet,
+                challengeTargetSeconds: activeChallenge ? activeChallenge.targetSeconds : 0,
+                challengeWon: challengeWon ? 1 : 0
+            });
         }
 
         function endGame(reason) {
@@ -2765,6 +2964,7 @@
             deathAnimation.active = false;
             gameState = 'playing';
             hiddenAt = 0;
+            setShareFeedback('');
             if (gameOverScreen) gameOverScreen.style.display = 'none';
             if (victoryScreen) victoryScreen.style.display = 'none';
             if (tutorialEl) tutorialEl.style.display = (playerProgress && playerProgress.totalRuns < 3) ? 'block' : 'none';
@@ -2798,6 +2998,7 @@
         }
 
         bindBtn(startBtnEl, startGame);
+        bindBtn(shareBtnEl, shareChallenge);
         bindBtn(document.getElementById('restartBtn'), restart);
         bindBtn(document.getElementById('victoryRestart'), restart);
         bindBtn(document.getElementById('continueBtn'), nextPlanet);
