@@ -1557,7 +1557,19 @@
 
         async function trackVisit() {
             try {
-                await backendRequest('/v1/visit', 'POST', { deviceId }, 1800);
+                const params = new URLSearchParams(window.location.search || '');
+                const tz = (Intl && Intl.DateTimeFormat) ? (Intl.DateTimeFormat().resolvedOptions().timeZone || '') : '';
+                await backendRequest('/v1/visit', 'POST', {
+                    deviceId,
+                    referrer: document.referrer || '',
+                    landingPath: String(window.location.pathname || '/') + String(window.location.search || ''),
+                    utmSource: params.get('utm_source') || '',
+                    utmMedium: params.get('utm_medium') || '',
+                    utmCampaign: params.get('utm_campaign') || '',
+                    userAgent: navigator.userAgent || '',
+                    timezone: tz,
+                    language: navigator.language || ''
+                }, 1800);
             } catch (e) {}
         }
 

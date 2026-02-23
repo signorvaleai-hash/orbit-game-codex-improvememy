@@ -12,6 +12,8 @@ services:
         value: "*"
       - key: BACKEND_API_KEY
         sync: false
+      - key: BACKEND_ADMIN_KEY
+        sync: false
 
   - type: web
     name: orbital-defense-web

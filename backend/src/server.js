@@ -10,6 +10,7 @@ const HOST = process.env.BACKEND_HOST || '127.0.0.1';
 const PORT = Number(process.env.BACKEND_PORT || 8787);
 const CORS_ORIGIN = process.env.BACKEND_CORS_ORIGIN || '*';
 const API_KEY = String(process.env.BACKEND_API_KEY || '');
+const ADMIN_KEY = String(process.env.BACKEND_ADMIN_KEY || '');
 const RATE_LIMIT_WINDOW_MS = Number(process.env.BACKEND_RATE_LIMIT_WINDOW_MS || 60_000);
 const RATE_LIMIT_MAX = Number(process.env.BACKEND_RATE_LIMIT_MAX || 120);
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -88,6 +89,28 @@ CREATE TABLE IF NOT EXISTS visitors (
   last_seen_at INTEGER NOT NULL,
   session_count INTEGER NOT NULL DEFAULT 1
 );
+
+CREATE TABLE IF NOT EXISTS traffic_events (
+  id TEXT PRIMARY KEY,
+  device_id TEXT,
+  source_type TEXT NOT NULL,
+  source_label TEXT NOT NULL,
+  referrer_host TEXT,
+  landing_path TEXT,
+  utm_source TEXT,
+  utm_medium TEXT,
+  utm_campaign TEXT,
+  user_agent TEXT,
+  timezone TEXT,
+  language TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_profiles_last_seen ON profiles(last_seen_at);
+CREATE INDEX IF NOT EXISTS idx_runs_submitted_at ON runs(submitted_at);
+CREATE INDEX IF NOT EXISTS idx_traffic_events_created_at ON traffic_events(created_at);
+CREATE INDEX IF NOT EXISTS idx_traffic_events_source_label ON traffic_events(source_label);
+CREATE INDEX IF NOT EXISTS idx_analytics_events_created_at ON analytics_events(created_at);
 `);
 
 const query = {
@@ -146,11 +169,19 @@ const query = {
       last_seen_at = excluded.last_seen_at,
       session_count = visitors.session_count + 1
   `),
+  insertTrafficEvent: db.prepare(`
+    INSERT INTO traffic_events (
+      id, device_id, source_type, source_label, referrer_host, landing_path, utm_source, utm_medium, utm_campaign, user_agent, timezone, language, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `),
   visitorsTotal: db.prepare(`SELECT COUNT(*) AS count FROM visitors`),
   visitorsActiveSince: db.prepare(`SELECT COUNT(*) AS count FROM visitors WHERE last_seen_at >= ?`),
   playersTotal: db.prepare(`SELECT COUNT(*) AS count FROM profiles`),
+  playersActiveSince: db.prepare(`SELECT COUNT(*) AS count FROM profiles WHERE last_seen_at >= ?`),
   runsTotal: db.prepare(`SELECT COUNT(*) AS count FROM runs`),
   runsSince: db.prepare(`SELECT COUNT(*) AS count FROM runs WHERE submitted_at >= ?`),
+  openSessionsSince: db.prepare(`SELECT COUNT(*) AS count FROM sessions WHERE status = 'open' AND started_at >= ?`),
+  avgScore: db.prepare(`SELECT COALESCE(AVG(authoritative_score), 0) AS score FROM runs`),
   highestScore: db.prepare(`SELECT COALESCE(MAX(authoritative_score), 0) AS score FROM runs`),
   topRun: db.prepare(`
     SELECT p.name AS player_name, r.authoritative_score AS score
@@ -158,6 +189,90 @@ const query = {
     JOIN profiles p ON p.id = r.profile_id
     ORDER BY r.authoritative_score DESC, r.submitted_at ASC
     LIMIT 1
+  `),
+  recentPlayers: db.prepare(`
+    SELECT
+      p.id,
+      p.name,
+      p.total_runs,
+      p.best_score,
+      p.best_survival,
+      p.last_seen_at,
+      (
+        SELECT MAX(r.submitted_at) FROM runs r WHERE r.profile_id = p.id
+      ) AS last_run_at
+    FROM profiles p
+    ORDER BY p.last_seen_at DESC
+    LIMIT ?
+  `),
+  recentRuns: db.prepare(`
+    SELECT
+      r.id,
+      r.profile_id,
+      p.name AS player_name,
+      r.survival_seconds,
+      r.planet_reached,
+      r.difficulty,
+      r.authoritative_score,
+      r.submitted_at
+    FROM runs r
+    JOIN profiles p ON p.id = r.profile_id
+    ORDER BY r.submitted_at DESC
+    LIMIT ?
+  `),
+  trafficSourcesSince: db.prepare(`
+    SELECT source_label, source_type, COUNT(*) AS visits
+    FROM traffic_events
+    WHERE created_at >= ?
+    GROUP BY source_label, source_type
+    ORDER BY visits DESC, source_label ASC
+    LIMIT ?
+  `),
+  trafficReferrersSince: db.prepare(`
+    SELECT referrer_host, COUNT(*) AS visits
+    FROM traffic_events
+    WHERE created_at >= ? AND COALESCE(referrer_host, '') <> ''
+    GROUP BY referrer_host
+    ORDER BY visits DESC, referrer_host ASC
+    LIMIT ?
+  `),
+  trafficLandingSince: db.prepare(`
+    SELECT landing_path, COUNT(*) AS visits
+    FROM traffic_events
+    WHERE created_at >= ? AND COALESCE(landing_path, '') <> ''
+    GROUP BY landing_path
+    ORDER BY visits DESC, landing_path ASC
+    LIMIT ?
+  `),
+  trafficCampaignsSince: db.prepare(`
+    SELECT utm_campaign, COUNT(*) AS visits
+    FROM traffic_events
+    WHERE created_at >= ? AND COALESCE(utm_campaign, '') <> ''
+    GROUP BY utm_campaign
+    ORDER BY visits DESC, utm_campaign ASC
+    LIMIT ?
+  `),
+  runsByDaySince: db.prepare(`
+    SELECT strftime('%Y-%m-%d', submitted_at / 1000, 'unixepoch') AS day, COUNT(*) AS runs
+    FROM runs
+    WHERE submitted_at >= ?
+    GROUP BY day
+    ORDER BY day ASC
+  `),
+  visitsByDaySince: db.prepare(`
+    SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS day, COUNT(*) AS visits
+    FROM traffic_events
+    WHERE created_at >= ?
+    GROUP BY day
+    ORDER BY day ASC
+  `),
+  analyticsEventsSince: db.prepare(`
+    SELECT event_name, COUNT(*) AS count
+    FROM analytics_events
+    WHERE created_at >= ?
+    GROUP BY event_name
+    ORDER BY count DESC, event_name ASC
+    LIMIT ?
   `)
 };
 
@@ -169,7 +284,7 @@ function json(res, statusCode, body) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': CORS_ORIGIN,
-    'Access-Control-Allow-Headers': 'Content-Type,X-Orbit-Api-Key',
+    'Access-Control-Allow-Headers': 'Content-Type,X-Orbit-Api-Key,X-Admin-Key,Authorization',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS'
   });
   res.end(JSON.stringify(body));
@@ -241,6 +356,48 @@ function getClientIp(req) {
   return xff || req.socket.remoteAddress || 'unknown';
 }
 
+function isAdminAuthorized(req) {
+  if (!ADMIN_KEY) return false;
+  const headerKey = String(req.headers['x-admin-key'] || '').trim();
+  const authHeader = String(req.headers.authorization || '').trim();
+  const bearerMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  const bearerKey = bearerMatch ? String(bearerMatch[1] || '').trim() : '';
+  const provided = headerKey || bearerKey;
+  return !!provided && provided === ADMIN_KEY;
+}
+
+function parseHost(urlString) {
+  try {
+    if (!urlString) return '';
+    return new URL(String(urlString)).host.toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+function parsePath(urlString) {
+  try {
+    if (!urlString) return '';
+    const u = new URL(String(urlString), 'http://local');
+    return String(u.pathname || '/') + String(u.search || '');
+  } catch {
+    return '';
+  }
+}
+
+function parseOptionalText(value, maxLen = 255) {
+  return String(value || '').trim().slice(0, maxLen);
+}
+
+function deriveTrafficSource({ referrerHost, requestHost, utmSource }) {
+  const cleanUtm = parseOptionalText(utmSource, 64);
+  if (cleanUtm) return { sourceType: 'utm', sourceLabel: 'utm:' + cleanUtm.toLowerCase() };
+  if (!referrerHost) return { sourceType: 'direct', sourceLabel: 'direct' };
+  const reqHost = String(requestHost || '').toLowerCase();
+  if (reqHost && referrerHost === reqHost) return { sourceType: 'internal', sourceLabel: 'internal' };
+  return { sourceType: 'referrer', sourceLabel: referrerHost };
+}
+
 function enforceRateLimit(req) {
   const ip = getClientIp(req);
   const now = Date.now();
@@ -275,6 +432,11 @@ function route(req, res) {
     if (!clientKey || clientKey !== API_KEY) {
       return json(res, 401, { error: 'unauthorized' });
     }
+  }
+
+  if (pathname.startsWith('/v1/admin/')) {
+    if (!ADMIN_KEY) return json(res, 503, { error: 'admin_not_configured' });
+    if (!isAdminAuthorized(req)) return json(res, 401, { error: 'admin_unauthorized' });
   }
 
   if (pathname === '/v1/profile/register' && req.method === 'POST') {
@@ -313,8 +475,35 @@ function route(req, res) {
         const deviceId = String(body.deviceId || '').slice(0, 128).trim();
         if (!deviceId) return json(res, 400, { error: 'device_id_required' });
         const ts = nowMs();
+        const requestHost = String(req.headers.host || '').split(':')[0].toLowerCase();
+        const fallbackRef = String(req.headers.referer || req.headers.referrer || '');
+        const referrerUrl = parseOptionalText(body.referrer || fallbackRef, 1024);
+        const referrerHost = parseHost(referrerUrl);
+        const landingPath = parseOptionalText(body.landingPath || parsePath(referrerUrl), 255) || '/';
+        const utmSource = parseOptionalText(body.utmSource, 64);
+        const utmMedium = parseOptionalText(body.utmMedium, 64);
+        const utmCampaign = parseOptionalText(body.utmCampaign, 128);
+        const userAgent = parseOptionalText(body.userAgent || req.headers['user-agent'], 255);
+        const timezone = parseOptionalText(body.timezone, 64);
+        const language = parseOptionalText(body.language || req.headers['accept-language'], 64);
+        const source = deriveTrafficSource({ referrerHost, requestHost, utmSource });
         query.upsertVisitor.run(deviceId, ts, ts);
-        return json(res, 202, { ok: true });
+        query.insertTrafficEvent.run(
+          randomUUID(),
+          deviceId,
+          source.sourceType,
+          source.sourceLabel,
+          referrerHost,
+          landingPath,
+          utmSource,
+          utmMedium,
+          utmCampaign,
+          userAgent,
+          timezone,
+          language,
+          ts
+        );
+        return json(res, 202, { ok: true, source: source.sourceLabel });
       })
       .catch((error) => json(res, 400, { error: error.message }));
   }
@@ -443,6 +632,120 @@ function route(req, res) {
       bestSurvival,
       rank: rankRow ? Number(rankRow.rank || 0) : 0,
       size
+    });
+  }
+
+  if (pathname === '/v1/admin/dashboard' && req.method === 'GET') {
+    const now = nowMs();
+    const rangeDays = Math.floor(clampNumber(url.searchParams.get('rangeDays') || 30, 1, 90));
+    const liveMinutes = Math.floor(clampNumber(url.searchParams.get('liveMinutes') || 15, 1, 240));
+    const since24h = now - 24 * 60 * 60 * 1000;
+    const sinceRange = now - rangeDays * 24 * 60 * 60 * 1000;
+    const liveSince = now - liveMinutes * 60 * 1000;
+
+    const visitors = query.visitorsTotal.get();
+    const visitorsToday = query.visitorsActiveSince.get(since24h);
+    const players = query.playersTotal.get();
+    const playersActive = query.playersActiveSince.get(liveSince);
+    const runs = query.runsTotal.get();
+    const runsToday = query.runsSince.get(since24h);
+    const highest = query.highestScore.get();
+    const average = query.avgScore.get();
+    const top = query.topRun.get();
+    const sessionsLive = query.openSessionsSince.get(now - 6 * 60 * 60 * 1000);
+
+    const topPlayers = query.leaderboardTop.all(20).map((row, idx) => ({
+      rank: idx + 1,
+      profileId: String(row.profile_id || ''),
+      playerName: sanitizeName(row.player_name || 'Pilot'),
+      score: Math.max(0, Math.floor(Number(row.score || 0))),
+      survivalSeconds: Math.max(0, Math.floor(Number(row.survival_seconds || 0)))
+    }));
+
+    const recentPlayers = query.recentPlayers.all(30).map((row) => ({
+      profileId: String(row.id || ''),
+      name: sanitizeName(row.name || 'Pilot'),
+      totalRuns: Math.max(0, Number(row.total_runs || 0)),
+      bestScore: Math.max(0, Number(row.best_score || 0)),
+      bestSurvival: Math.max(0, Number(row.best_survival || 0)),
+      lastSeenAt: Math.max(0, Number(row.last_seen_at || 0)),
+      lastRunAt: Math.max(0, Number(row.last_run_at || 0)),
+      isLive: Number(row.last_seen_at || 0) >= liveSince
+    }));
+
+    const recentRuns = query.recentRuns.all(80).map((row) => ({
+      runId: String(row.id || ''),
+      profileId: String(row.profile_id || ''),
+      playerName: sanitizeName(row.player_name || 'Pilot'),
+      score: Math.max(0, Number(row.authoritative_score || 0)),
+      survivalSeconds: Math.max(0, Number(row.survival_seconds || 0)),
+      planetReached: Math.max(1, Number(row.planet_reached || 1)),
+      difficulty: Math.max(1, Number(row.difficulty || 1)),
+      submittedAt: Math.max(0, Number(row.submitted_at || 0))
+    }));
+
+    const sourceRows = query.trafficSourcesSince.all(sinceRange, 20).map((row) => ({
+      label: String(row.source_label || 'unknown'),
+      type: String(row.source_type || 'unknown'),
+      visits: Math.max(0, Number(row.visits || 0))
+    }));
+    const referrerRows = query.trafficReferrersSince.all(sinceRange, 20).map((row) => ({
+      host: String(row.referrer_host || ''),
+      visits: Math.max(0, Number(row.visits || 0))
+    }));
+    const landingRows = query.trafficLandingSince.all(sinceRange, 20).map((row) => ({
+      path: String(row.landing_path || '/'),
+      visits: Math.max(0, Number(row.visits || 0))
+    }));
+    const campaignRows = query.trafficCampaignsSince.all(sinceRange, 20).map((row) => ({
+      campaign: String(row.utm_campaign || ''),
+      visits: Math.max(0, Number(row.visits || 0))
+    }));
+
+    const runSeries = query.runsByDaySince.all(sinceRange).map((row) => ({
+      day: String(row.day || ''),
+      value: Math.max(0, Number(row.runs || 0))
+    }));
+    const visitSeries = query.visitsByDaySince.all(sinceRange).map((row) => ({
+      day: String(row.day || ''),
+      value: Math.max(0, Number(row.visits || 0))
+    }));
+
+    const eventRows = query.analyticsEventsSince.all(sinceRange, 20).map((row) => ({
+      eventName: String(row.event_name || ''),
+      count: Math.max(0, Number(row.count || 0))
+    }));
+
+    return json(res, 200, {
+      generatedAt: now,
+      rangeDays,
+      liveMinutes,
+      overview: {
+        visitorsTotal: Number(visitors ? visitors.count : 0),
+        visitorsToday: Number(visitorsToday ? visitorsToday.count : 0),
+        playersTotal: Number(players ? players.count : 0),
+        playersLive: Number(playersActive ? playersActive.count : 0),
+        sessionsOpen: Number(sessionsLive ? sessionsLive.count : 0),
+        runsTotal: Number(runs ? runs.count : 0),
+        runsToday: Number(runsToday ? runsToday.count : 0),
+        highestScore: Number(highest ? highest.score : 0),
+        averageScore: Math.round(Number(average ? average.score : 0)),
+        topPlayer: top ? sanitizeName(top.player_name || 'No one yet') : 'No one yet'
+      },
+      topPlayers,
+      recentPlayers,
+      recentRuns,
+      traffic: {
+        sources: sourceRows,
+        referrers: referrerRows,
+        landingPaths: landingRows,
+        campaigns: campaignRows
+      },
+      charts: {
+        runsByDay: runSeries,
+        visitsByDay: visitSeries
+      },
+      events: eventRows
     });
   }
 

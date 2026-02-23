@@ -16,6 +16,7 @@ Defaults:
 - `BACKEND_DB_PATH=backend/data/orbit.sqlite`
 - `BACKEND_CORS_ORIGIN=*`
 - `BACKEND_API_KEY=` (optional)
+- `BACKEND_ADMIN_KEY=` (required for admin dashboard endpoints)
 - `BACKEND_RATE_LIMIT_WINDOW_MS=60000`
 - `BACKEND_RATE_LIMIT_MAX=120`
 
@@ -25,7 +26,7 @@ Defaults:
 - `POST /v1/profile/register`
   - body: `{ profileId?, name, deviceId }`
 - `POST /v1/visit`
-  - body: `{ deviceId }`
+  - body: `{ deviceId, referrer?, landingPath?, utmSource?, utmMedium?, utmCampaign?, userAgent?, timezone?, language? }`
 - `GET /v1/stats/public`
 - `POST /v1/consent`
   - body: `{ profileId, analyticsAllowed, crashAllowed }`
@@ -38,6 +39,10 @@ Defaults:
 - `GET /v1/profile/:id`
 - `POST /v1/analytics/event`
 - `POST /v1/crash`
+
+Admin-only (requires `X-Admin-Key` header matching `BACKEND_ADMIN_KEY`):
+- `GET /v1/admin/dashboard?rangeDays=30&liveMinutes=15`
+  - returns overview KPIs, top players, recent players/runs, traffic source analytics, day charts, and event counts
 
 Notes:
 - leaderboard top is per-player best score (one row per real profile)

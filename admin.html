@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+  <title>Orbital Defense Admin</title>
+  <style>
+    :root {
+      --bg: #050814;
+      --panel: #0a1228;
+      --panel-2: #0d1935;
+      --ink: #eaf1ff;
+      --muted: #92a6ce;
+      --brand: #4ea2ff;
+      --brand-2: #7a63ff;
+      --good: #3fd08e;
+      --warn: #f6c056;
+      --line: rgba(120, 170, 255, 0.28);
+      --shadow: 0 18px 45px rgba(0, 0, 0, 0.45);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "SF Pro Display", "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1300px 700px at 10% -20%, rgba(78, 162, 255, 0.2), transparent 45%),
+        radial-gradient(1000px 600px at 100% 0%, rgba(122, 99, 255, 0.18), transparent 40%),
+        linear-gradient(180deg, #060a1a 0%, var(--bg) 100%);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      width: min(1280px, 100% - 28px);
+      margin: 22px auto 40px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 18px 20px;
+      background: linear-gradient(160deg, rgba(10, 18, 40, 0.92), rgba(13, 25, 53, 0.9));
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+    }
+
+    .title { font-size: clamp(22px, 3vw, 34px); font-weight: 650; letter-spacing: -0.02em; }
+    .subtitle { color: var(--muted); margin-top: 4px; font-size: 13px; }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .control {
+      border: 1px solid var(--line);
+      background: rgba(9, 18, 40, 0.8);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .btn {
+      border: 0;
+      background: linear-gradient(135deg, var(--brand), var(--brand-2));
+      color: #fff;
+      border-radius: 12px;
+      padding: 9px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .status-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      background: rgba(9, 18, 40, 0.72);
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      background: linear-gradient(165deg, rgba(10, 18, 40, 0.92), rgba(13, 25, 53, 0.84));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .k-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .k-value { font-size: clamp(24px, 3vw, 36px); margin-top: 6px; font-weight: 700; }
+    .k-meta { color: #b9d1ff; font-size: 12px; margin-top: 4px; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 12px;
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 620;
+      margin-bottom: 10px;
+      color: #bfe1ff;
+      letter-spacing: 0.02em;
+    }
+
+    .table-wrap { overflow: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 9px 8px;
+      border-bottom: 1px solid rgba(146, 166, 206, 0.16);
+      white-space: nowrap;
+    }
+
+    th { color: #a8c6f6; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; }
+
+    tr.me { background: rgba(255, 211, 106, 0.09); }
+    tr.gold { background: rgba(255, 211, 106, 0.1); }
+    tr.silver { background: rgba(181, 221, 255, 0.08); }
+    tr.bronze { background: rgba(244, 190, 143, 0.08); }
+
+    .tag {
+      font-size: 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(63, 208, 142, 0.45);
+      color: #9ef0c6;
+      padding: 2px 8px;
+      display: inline-block;
+    }
+
+    .bar-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: minmax(90px, 190px) 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .bar-label {
+      color: #d5e6ff;
+      font-size: 12px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .bar-track {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(158, 192, 255, 0.16);
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+    }
+
+    .bar-value {
+      font-size: 12px;
+      color: #d6ecff;
+      min-width: 46px;
+      text-align: right;
+    }
+
+    .lock {
+      position: fixed;
+      inset: 0;
+      background: rgba(4, 8, 18, 0.74);
+      display: grid;
+      place-items: center;
+      backdrop-filter: blur(6px);
+      z-index: 50;
+    }
+
+    .lock-card {
+      width: min(420px, 100% - 24px);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      background: linear-gradient(165deg, rgba(10, 18, 40, 0.98), rgba(13, 25, 53, 0.95));
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 10px;
+    }
+
+    .lock-input {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #fff;
+      background: rgba(8, 16, 34, 0.85);
+    }
+
+    .error {
+      color: #ff9ea5;
+      font-size: 12px;
+      min-height: 16px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 1100px) {
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .cards { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 110px 1fr auto; }
+      .wrap { width: min(1280px, 100% - 14px); margin-top: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="lock" class="lock">
+    <div class="lock-card">
+      <div style="font-size: 24px; font-weight: 650;">Admin Analytics</div>
+      <div class="muted">Private dashboard. Enter your admin key.</div>
+      <input id="adminKeyInput" class="lock-input" type="password" placeholder="Admin key" autocomplete="off">
+      <button id="unlockBtn" class="btn">Unlock Dashboard</button>
+      <div id="lockError" class="error"></div>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section class="topbar">
+      <div>
+        <div class="title">Orbital Defense Admin</div>
+        <div class="subtitle">Private analytics and live game telemetry</div>
+      </div>
+      <div class="controls">
+        <label class="muted" for="rangeSelect">Window</label>
+        <select id="rangeSelect" class="control">
+          <option value="7">Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="60">Last 60 days</option>
+        </select>
+        <button id="refreshBtn" class="btn">Refresh</button>
+        <div id="statusPill" class="status-pill">Waiting</div>
+      </div>
+    </section>
+
+    <section class="cards" id="kpiCards"></section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="panel-title">Global Top Players</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Pilot</th><th>Score</th><th>Best Time</th></tr>
+            </thead>
+            <tbody id="topPlayersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="panel-title">Traffic Sources</div>
+        <div id="sourceBars" class="bar-list"></div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="panel-title">Live / Recent Players</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pilot</th><th>Runs</th><th>Best</th><th>Last Seen</th><th>Status</th></tr>
+            </thead>
+            <tbody id="playersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="panel-title">Recent Runs</div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Pilot</th><th>Score</th><th>Time</th><th>Planet</th><th>When</th></tr>
+            </thead>
+            <tbody id="runsBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="panel-title">Top Referrers</div>
+        <div id="referrerBars" class="bar-list"></div>
+      </div>
+      <div class="card">
+        <div class="panel-title">Campaigns & Landing Paths</div>
+        <div style="display:grid; gap:12px;">
+          <div>
+            <div class="muted" style="margin-bottom:6px;">Campaigns</div>
+            <div id="campaignBars" class="bar-list"></div>
+          </div>
+          <div>
+            <div class="muted" style="margin-bottom:6px;">Landing Paths</div>
+            <div id="landingBars" class="bar-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid-2">
+      <div class="card">
+        <div class="panel-title">Runs by Day</div>
+        <div id="runsChartBars" class="bar-list"></div>
+      </div>
+      <div class="card">
+        <div class="panel-title">Visits by Day</div>
+        <div id="visitsChartBars" class="bar-list"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="panel-title">Top Analytics Events</div>
+      <div id="eventBars" class="bar-list"></div>
+    </section>
+  </main>
+
+  <script src="./runtime-config.js"></script>
+  <script>
+    const runtimeConfig = window.ORBIT_RUNTIME || {};
+    const BACKEND_BASE = String(runtimeConfig.backendBase || '').replace(/\/+$/, '');
+    const API_KEY = String(runtimeConfig.apiKey || '');
+
+    const lockEl = document.getElementById('lock');
+    const lockErrorEl = document.getElementById('lockError');
+    const adminKeyInputEl = document.getElementById('adminKeyInput');
+    const unlockBtnEl = document.getElementById('unlockBtn');
+    const refreshBtnEl = document.getElementById('refreshBtn');
+    const rangeSelectEl = document.getElementById('rangeSelect');
+    const statusPillEl = document.getElementById('statusPill');
+    const kpiCardsEl = document.getElementById('kpiCards');
+    const topPlayersBodyEl = document.getElementById('topPlayersBody');
+    const playersBodyEl = document.getElementById('playersBody');
+    const runsBodyEl = document.getElementById('runsBody');
+    const sourceBarsEl = document.getElementById('sourceBars');
+    const referrerBarsEl = document.getElementById('referrerBars');
+    const campaignBarsEl = document.getElementById('campaignBars');
+    const landingBarsEl = document.getElementById('landingBars');
+    const runsChartBarsEl = document.getElementById('runsChartBars');
+    const visitsChartBarsEl = document.getElementById('visitsChartBars');
+    const eventBarsEl = document.getElementById('eventBars');
+
+    let adminKey = sessionStorage.getItem('orbit_admin_key') || '';
+    let refreshTimer = null;
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatNum(value) {
+      return Math.max(0, Number(value || 0)).toLocaleString('en-US');
+    }
+
+    function formatAgo(ts) {
+      const t = Math.max(0, Number(ts || 0));
+      if (!t) return '-';
+      const sec = Math.floor((Date.now() - t) / 1000);
+      if (sec < 60) return sec + 's ago';
+      const min = Math.floor(sec / 60);
+      if (min < 60) return min + 'm ago';
+      const h = Math.floor(min / 60);
+      if (h < 24) return h + 'h ago';
+      const d = Math.floor(h / 24);
+      return d + 'd ago';
+    }
+
+    function buildBarList(el, rows, labelKey, valueKey, emptyLabel) {
+      if (!el) return;
+      const max = rows.length ? Math.max(...rows.map((row) => Number(row[valueKey] || 0))) : 0;
+      if (!rows.length || max <= 0) {
+        el.innerHTML = '<div class="muted">' + escapeHtml(emptyLabel || 'No data yet') + '</div>';
+        return;
+      }
+      el.innerHTML = rows.map((row) => {
+        const val = Math.max(0, Number(row[valueKey] || 0));
+        const pct = Math.max(6, Math.round((val / max) * 100));
+        const label = String(row[labelKey] || 'unknown');
+        return '<div class="bar-row">'
+          + '<div class="bar-label" title="' + escapeHtml(label) + '">' + escapeHtml(label) + '</div>'
+          + '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%"></div></div>'
+          + '<div class="bar-value">' + formatNum(val) + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function setStatus(text, ok = true) {
+      if (!statusPillEl) return;
+      statusPillEl.textContent = text;
+      statusPillEl.style.color = ok ? '#98f1c6' : '#ffadb1';
+      statusPillEl.style.borderColor = ok ? 'rgba(63, 208, 142, 0.4)' : 'rgba(255, 122, 134, 0.45)';
+    }
+
+    async function adminFetch(path) {
+      const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey };
+      if (API_KEY) headers['X-Orbit-Api-Key'] = API_KEY;
+      const res = await fetch(BACKEND_BASE + path, { method: 'GET', headers });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(payload.error || ('http_' + res.status));
+      }
+      return payload;
+    }
+
+    function renderOverview(overview) {
+      const cards = [
+        { label: 'Visitors', value: overview.visitorsTotal, meta: formatNum(overview.visitorsToday) + ' active in 24h' },
+        { label: 'Players', value: overview.playersTotal, meta: formatNum(overview.playersLive) + ' live now' },
+        { label: 'Runs', value: overview.runsTotal, meta: formatNum(overview.runsToday) + ' in 24h' },
+        { label: 'High Score', value: overview.highestScore, meta: 'Avg score ' + formatNum(overview.averageScore) },
+        { label: 'Open Sessions', value: overview.sessionsOpen, meta: 'Currently in active play loops' },
+        { label: 'Top Pilot', value: overview.topPlayer || 'No one yet', meta: 'Best score owner' }
+      ];
+      kpiCardsEl.innerHTML = cards.map((card) => (
+        '<div class="card">'
+        + '<div class="k-label">' + escapeHtml(card.label) + '</div>'
+        + '<div class="k-value">' + escapeHtml(card.value) + '</div>'
+        + '<div class="k-meta">' + escapeHtml(card.meta) + '</div>'
+        + '</div>'
+      )).join('');
+    }
+
+    function renderTopPlayers(rows) {
+      if (!rows.length) {
+        topPlayersBodyEl.innerHTML = '<tr><td colspan="4" class="muted">No runs yet.</td></tr>';
+        return;
+      }
+      topPlayersBodyEl.innerHTML = rows.slice(0, 20).map((row, idx) => {
+        let cls = '';
+        if (idx === 0) cls = 'gold';
+        else if (idx === 1) cls = 'silver';
+        else if (idx === 2) cls = 'bronze';
+        return '<tr class="' + cls + '">'
+          + '<td>' + (idx + 1) + '</td>'
+          + '<td>' + escapeHtml(row.playerName || 'Pilot') + '</td>'
+          + '<td>' + formatNum(row.score) + '</td>'
+          + '<td>' + formatNum(row.survivalSeconds) + 's</td>'
+          + '</tr>';
+      }).join('');
+    }
+
+    function renderPlayers(rows) {
+      if (!rows.length) {
+        playersBodyEl.innerHTML = '<tr><td colspan="5" class="muted">No players yet.</td></tr>';
+        return;
+      }
+      playersBodyEl.innerHTML = rows.map((row) => (
+        '<tr>'
+        + '<td>' + escapeHtml(row.name || 'Pilot') + '</td>'
+        + '<td>' + formatNum(row.totalRuns) + '</td>'
+        + '<td>' + formatNum(row.bestScore) + '</td>'
+        + '<td>' + escapeHtml(formatAgo(row.lastSeenAt)) + '</td>'
+        + '<td>' + (row.isLive ? '<span class="tag">LIVE</span>' : '<span class="muted">idle</span>') + '</td>'
+        + '</tr>'
+      )).join('');
+    }
+
+    function renderRuns(rows) {
+      if (!rows.length) {
+        runsBodyEl.innerHTML = '<tr><td colspan="5" class="muted">No runs yet.</td></tr>';
+        return;
+      }
+      runsBodyEl.innerHTML = rows.slice(0, 60).map((row) => (
+        '<tr>'
+        + '<td>' + escapeHtml(row.playerName || 'Pilot') + '</td>'
+        + '<td>' + formatNum(row.score) + '</td>'
+        + '<td>' + formatNum(row.survivalSeconds) + 's</td>'
+        + '<td>P' + formatNum(row.planetReached) + '</td>'
+        + '<td>' + escapeHtml(formatAgo(row.submittedAt)) + '</td>'
+        + '</tr>'
+      )).join('');
+    }
+
+    function renderDashboard(data) {
+      renderOverview(data.overview || {});
+      renderTopPlayers(Array.isArray(data.topPlayers) ? data.topPlayers : []);
+      renderPlayers(Array.isArray(data.recentPlayers) ? data.recentPlayers : []);
+      renderRuns(Array.isArray(data.recentRuns) ? data.recentRuns : []);
+
+      const traffic = data.traffic || {};
+      const charts = data.charts || {};
+      buildBarList(sourceBarsEl, Array.isArray(traffic.sources) ? traffic.sources : [], 'label', 'visits', 'No source data yet');
+      buildBarList(referrerBarsEl, Array.isArray(traffic.referrers) ? traffic.referrers : [], 'host', 'visits', 'No referrers yet');
+      buildBarList(campaignBarsEl, Array.isArray(traffic.campaigns) ? traffic.campaigns : [], 'campaign', 'visits', 'No campaigns yet');
+      buildBarList(landingBarsEl, Array.isArray(traffic.landingPaths) ? traffic.landingPaths : [], 'path', 'visits', 'No landing data yet');
+      buildBarList(runsChartBarsEl, Array.isArray(charts.runsByDay) ? charts.runsByDay : [], 'day', 'value', 'No run history yet');
+      buildBarList(visitsChartBarsEl, Array.isArray(charts.visitsByDay) ? charts.visitsByDay : [], 'day', 'value', 'No visit history yet');
+      buildBarList(eventBarsEl, Array.isArray(data.events) ? data.events : [], 'eventName', 'count', 'No analytics events yet');
+    }
+
+    async function loadDashboard() {
+      if (!adminKey) return;
+      const days = Number(rangeSelectEl.value || 30);
+      setStatus('Refreshing...');
+      try {
+        const data = await adminFetch('/v1/admin/dashboard?rangeDays=' + days + '&liveMinutes=15');
+        renderDashboard(data);
+        const t = new Date(data.generatedAt || Date.now());
+        setStatus('Updated ' + t.toLocaleTimeString());
+      } catch (err) {
+        const msg = String(err.message || 'request_failed');
+        if (msg.includes('admin_unauthorized') || msg.includes('401')) {
+          sessionStorage.removeItem('orbit_admin_key');
+          adminKey = '';
+          lockEl.style.display = 'grid';
+          lockErrorEl.textContent = 'Invalid admin key. Please try again.';
+        }
+        setStatus('Sync failed', false);
+      }
+    }
+
+    function startAutoRefresh() {
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(loadDashboard, 15000);
+    }
+
+    unlockBtnEl.addEventListener('click', async () => {
+      const typed = String(adminKeyInputEl.value || '').trim();
+      if (!typed) {
+        lockErrorEl.textContent = 'Enter your admin key.';
+        return;
+      }
+      adminKey = typed;
+      lockErrorEl.textContent = '';
+      try {
+        await loadDashboard();
+        sessionStorage.setItem('orbit_admin_key', adminKey);
+        lockEl.style.display = 'none';
+        startAutoRefresh();
+      } catch {
+        lockErrorEl.textContent = 'Key failed. Check key and backend config.';
+      }
+    });
+
+    adminKeyInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') unlockBtnEl.click();
+    });
+
+    refreshBtnEl.addEventListener('click', loadDashboard);
+    rangeSelectEl.addEventListener('change', loadDashboard);
+
+    if (adminKey) {
+      lockEl.style.display = 'none';
+      loadDashboard();
+      startAutoRefresh();
+    } else {
+      setStatus('Locked', false);
+      lockEl.style.display = 'grid';
+    }
+  </script>
+</body>
+</html>
