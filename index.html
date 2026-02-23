@@ -228,6 +228,29 @@
             display: none;
         }
 
+        #gameOver {
+            justify-content: flex-start;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: calc(120px + var(--safe-bottom));
+        }
+
+        #gameOverActionBar {
+            position: sticky;
+            bottom: calc(10px + var(--safe-bottom));
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            z-index: 30;
+            margin-top: 10px;
+            pointer-events: none;
+        }
+
+        #gameOverActionBar #restartBtn {
+            pointer-events: auto;
+            min-width: 220px;
+        }
+
         .title {
             font-size: 32px;
             color: #64c8ff;
@@ -919,7 +942,9 @@
                 </div>
             </div>
 
-            <button class="btn" id="restartBtn">RETRY</button>
+            <div id="gameOverActionBar">
+                <button class="btn" id="restartBtn">RETRY</button>
+            </div>
         </div>
     </div>
 
