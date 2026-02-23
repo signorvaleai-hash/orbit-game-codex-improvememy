@@ -1124,6 +1124,7 @@
         let challengeVisitTracked = false;
         let challengeFirstRunTracked = false;
         let challengeBeatTracked = false;
+        let shareInFlight = false;
         let lastRunSnapshot = {
             survivalSeconds: 0,
             score: 0,
@@ -1349,6 +1350,168 @@
             if (!shareFeedbackLineEl) return;
             shareFeedbackLineEl.textContent = String(message || '');
             shareFeedbackLineEl.style.color = isWarn ? '#ffd6a0' : 'rgba(191,232,255,0.82)';
+        }
+
+        function roundRectPath(ctx, x, y, width, height, radius) {
+            const r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + width - r, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+            ctx.lineTo(x + width, y + height - r);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+            ctx.lineTo(x + r, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function canvasToBlob(canvas, type = 'image/png', quality) {
+            return new Promise((resolve) => {
+                if (!canvas || typeof canvas.toBlob !== 'function') return resolve(null);
+                canvas.toBlob((blob) => resolve(blob || null), type, quality);
+            });
+        }
+
+        function trimShareUrlForCard(url) {
+            try {
+                const parsed = new URL(url);
+                const full = parsed.host + parsed.pathname + parsed.search;
+                if (full.length <= 68) return full;
+                return full.slice(0, 65) + '...';
+            } catch {
+                return String(url || '').slice(0, 68);
+            }
+        }
+
+        async function generateShareCardBlob(payload) {
+            try {
+                const width = 1080;
+                const height = 1920;
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return null;
+
+                const bg = ctx.createLinearGradient(0, 0, width, height);
+                bg.addColorStop(0, '#060b1f');
+                bg.addColorStop(0.45, '#0d1d45');
+                bg.addColorStop(1, '#070c1f');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, width, height);
+
+                for (let i = 0; i < 150; i++) {
+                    const x = (Math.sin(i * 13.13 + payload.targetSeconds) * 0.5 + 0.5) * width;
+                    const y = (Math.sin(i * 7.31 + payload.targetSeconds * 0.3) * 0.5 + 0.5) * height;
+                    const size = (i % 3) + 1;
+                    ctx.fillStyle = 'rgba(215,238,255,' + (0.2 + ((i % 7) / 20)) + ')';
+                    ctx.beginPath();
+                    ctx.arc(x, y, size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                const cardX = 74;
+                const cardY = 140;
+                const cardW = width - cardX * 2;
+                const cardH = height - 320;
+                roundRectPath(ctx, cardX, cardY, cardW, cardH, 44);
+                ctx.fillStyle = 'rgba(6, 16, 36, 0.82)';
+                ctx.fill();
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = 'rgba(100, 200, 255, 0.45)';
+                ctx.stroke();
+
+                const titleGrad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY);
+                titleGrad.addColorStop(0, '#6fc9ff');
+                titleGrad.addColorStop(1, '#8f78ff');
+                ctx.fillStyle = titleGrad;
+                ctx.font = '700 78px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText('Orbital Defense', cardX + 60, cardY + 120);
+
+                ctx.fillStyle = 'rgba(226, 240, 255, 0.9)';
+                ctx.font = '500 42px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText(payload.challengerName + ' challenges you', cardX + 60, cardY + 185);
+
+                const pillX = cardX + 60;
+                const pillY = cardY + 250;
+                const pillW = cardW - 120;
+                const pillH = 260;
+                roundRectPath(ctx, pillX, pillY, pillW, pillH, 34);
+                const pillGrad = ctx.createLinearGradient(pillX, pillY, pillX + pillW, pillY + pillH);
+                pillGrad.addColorStop(0, 'rgba(69, 160, 255, 0.28)');
+                pillGrad.addColorStop(1, 'rgba(122, 99, 255, 0.3)');
+                ctx.fillStyle = pillGrad;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = 'rgba(137, 203, 255, 0.45)';
+                ctx.stroke();
+
+                ctx.fillStyle = '#cde7ff';
+                ctx.font = '600 34px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText('Beat this mission', pillX + 42, pillY + 74);
+
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 124px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText(payload.targetSeconds + 's', pillX + 42, pillY + 200);
+
+                const statsY = pillY + pillH + 50;
+                const statW = (pillW - 24) / 2;
+                const statH = 130;
+
+                roundRectPath(ctx, pillX, statsY, statW, statH, 22);
+                ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                ctx.fill();
+                ctx.fillStyle = '#d7ecff';
+                ctx.font = '500 28px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText('Last score', pillX + 24, statsY + 46);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 48px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText(String(Math.max(0, Math.floor(Number(lastRunSnapshot.score || 0)))), pillX + 24, statsY + 98);
+
+                roundRectPath(ctx, pillX + statW + 24, statsY, statW, statH, 22);
+                ctx.fillStyle = 'rgba(255,255,255,0.06)';
+                ctx.fill();
+                ctx.fillStyle = '#d7ecff';
+                ctx.font = '500 28px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText('Current rank', pillX + statW + 48, statsY + 46);
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '700 46px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText(String(lastRunSnapshot.rankName || 'Rookie'), pillX + statW + 48, statsY + 98);
+
+                ctx.fillStyle = 'rgba(215, 236, 255, 0.88)';
+                ctx.font = '500 34px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText('Tap to play and beat it:', pillX, statsY + 220);
+                ctx.fillStyle = '#9fceff';
+                ctx.font = '500 26px Menlo, Monaco, Consolas, monospace';
+                ctx.fillText(trimShareUrlForCard(payload.url), pillX, statsY + 268);
+
+                ctx.fillStyle = 'rgba(255,255,255,0.66)';
+                ctx.font = '500 24px "SF Pro Display", "Inter", sans-serif';
+                ctx.fillText('Generated by Orbital Defense', cardX + 60, cardY + cardH - 44);
+
+                return await canvasToBlob(canvas, 'image/png');
+            } catch {
+                return null;
+            }
+        }
+
+        function downloadShareCard(blob, fileName) {
+            try {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                a.rel = 'noopener';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(() => URL.revokeObjectURL(url), 1200);
+                return true;
+            } catch {
+                return false;
+            }
         }
 
         function formatPaceLabel(paceKey) {
@@ -1926,41 +2089,102 @@
         }
 
         async function shareChallenge() {
+            if (shareInFlight) return;
+            shareInFlight = true;
+            if (shareBtnEl) shareBtnEl.disabled = true;
+            setShareFeedback('Generating share card...');
             const payload = buildChallengeSharePayload();
+            const fileName = 'orbital-defense-challenge-' + payload.targetSeconds + 's.png';
             sendAnalyticsEvent('share_click', {
                 challengeTargetSeconds: payload.targetSeconds,
                 score: Math.max(0, Math.floor(Number(lastRunSnapshot.score || 0))),
                 survivalSeconds: Math.max(0, Math.floor(Number(lastRunSnapshot.survivalSeconds || 0)))
             });
 
-            if (navigator.share) {
-                try {
-                    await navigator.share({
-                        title: payload.title,
-                        text: payload.text,
-                        url: payload.url
+            try {
+                const shareCardBlob = await generateShareCardBlob(payload);
+                const hasFileSupport = typeof File === 'function';
+                const shareCardFile = (shareCardBlob && hasFileSupport)
+                    ? new File([shareCardBlob], fileName, { type: 'image/png' })
+                    : null;
+
+                if (shareCardBlob) {
+                    sendAnalyticsEvent('share_card_generated', {
+                        challengeTargetSeconds: payload.targetSeconds,
+                        fileBytes: shareCardBlob.size || 0
                     });
-                    setShareFeedback('Challenge shared.');
-                    sendAnalyticsEvent('share_success', { channel: 'native_share', challengeTargetSeconds: payload.targetSeconds });
-                    return;
-                } catch (error) {
-                    if (error && error.name === 'AbortError') {
-                        setShareFeedback('Share cancelled.', true);
+                }
+
+                if (navigator.share) {
+                    try {
+                        const canShareFiles = !!(
+                            shareCardFile &&
+                            navigator.canShare &&
+                            navigator.canShare({ files: [shareCardFile] })
+                        );
+
+                        if (canShareFiles) {
+                            await navigator.share({
+                                title: payload.title,
+                                text: payload.text,
+                                url: payload.url,
+                                files: [shareCardFile]
+                            });
+                            setShareFeedback('Challenge card shared.');
+                            sendAnalyticsEvent('share_success', {
+                                channel: 'native_share_card',
+                                challengeTargetSeconds: payload.targetSeconds
+                            });
+                            return;
+                        }
+
+                        await navigator.share({
+                            title: payload.title,
+                            text: payload.text,
+                            url: payload.url
+                        });
+                        setShareFeedback('Challenge shared.');
+                        sendAnalyticsEvent('share_success', {
+                            channel: 'native_share_link',
+                            challengeTargetSeconds: payload.targetSeconds
+                        });
                         return;
+                    } catch (error) {
+                        if (error && error.name === 'AbortError') {
+                            setShareFeedback('Share cancelled.', true);
+                            return;
+                        }
                     }
                 }
-            }
 
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(payload.url);
-                    setShareFeedback('Challenge link copied.');
-                    sendAnalyticsEvent('share_success', { channel: 'clipboard', challengeTargetSeconds: payload.targetSeconds });
-                    return;
+                if (shareCardBlob) {
+                    const downloaded = downloadShareCard(shareCardBlob, fileName);
+                    if (downloaded) {
+                        sendAnalyticsEvent('share_card_download', { challengeTargetSeconds: payload.targetSeconds });
+                    }
                 }
-            } catch (e) {}
 
-            setShareFeedback('Copy this link: ' + payload.url, true);
+                try {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(payload.url);
+                        if (shareCardBlob) {
+                            setShareFeedback('Card downloaded. Link copied for sharing.');
+                        } else {
+                            setShareFeedback('Challenge link copied.');
+                        }
+                        sendAnalyticsEvent('share_success', {
+                            channel: shareCardBlob ? 'download_plus_clipboard' : 'clipboard',
+                            challengeTargetSeconds: payload.targetSeconds
+                        });
+                        return;
+                    }
+                } catch (e) {}
+
+                setShareFeedback('Copy this link: ' + payload.url, true);
+            } finally {
+                shareInFlight = false;
+                if (shareBtnEl) shareBtnEl.disabled = false;
+            }
         }
 
         async function sendCrashReport(message, stack) {
