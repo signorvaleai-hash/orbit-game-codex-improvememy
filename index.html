@@ -418,15 +418,28 @@
 
         #tutorial {
             position: absolute;
-            bottom: calc(90px + var(--safe-bottom));
-            left: 0;
-            right: 0;
+            left: 50%;
+            bottom: calc(130px + var(--safe-bottom));
+            transform: translateX(-50%);
+            width: min(90vw, 430px);
             text-align: center;
-            color: rgba(255, 255, 255, 0.35);
-            font-size: 13px;
+            color: rgba(228, 244, 255, 0.96);
+            font-size: clamp(12px, 1.8vw, 16px);
+            line-height: 1.35;
             pointer-events: none;
             display: none;
-            z-index: 5;
+            z-index: 9;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(100, 200, 255, 0.3);
+            background: rgba(3, 14, 30, 0.85);
+            box-shadow: 0 0 24px rgba(100, 200, 255, 0.12);
+            animation: tutorialPulse 1.4s ease-in-out infinite;
+        }
+
+        @keyframes tutorialPulse {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.02); }
         }
 
         #bossWarning {
@@ -688,6 +701,15 @@
             text-align: center;
         }
 
+        .quick-start-hint {
+            margin-top: 8px;
+            width: 100%;
+            color: rgba(215, 241, 255, 0.9);
+            font-size: clamp(12px, 1.8vw, 18px);
+            line-height: 1.35;
+            text-align: center;
+        }
+
         @media (max-width: 640px) {
             #startScreen {
                 padding-top: calc(24px + var(--safe-top));
@@ -804,6 +826,11 @@
             </div>
 
             <button class="btn" id="startBtn">Start Mission</button>
+            <div id="quickStartHint" class="quick-start-hint">How to play: Hold anywhere = move in. Release = move out.</div>
+
+            <div id="firstMissionGuide" class="start-mission-guide">
+                Avoid debris. Survive 24s to reach Pilot.
+            </div>
 
             <div class="mode-select">
                 <div class="mode-btn selected">
@@ -819,7 +846,7 @@
             <div id="paceHintLine" class="start-difficulty-line">Difficulty: Medium</div>
 
             <details id="startUtilityPanel" class="start-utility">
-                <summary>Privacy & stats</summary>
+                <summary>Optional: Privacy & stats</summary>
                 <div id="backendStatusLine" class="start-meta-line">Cloud sync: checking...</div>
                 <div id="consentPanel" class="start-panel">
                     <div style="color: #bfe8ff; font-size: 11px; text-align: center; margin-bottom: 6px;">Privacy</div>
@@ -845,10 +872,6 @@
                     </div>
                 </div>
             </details>
-
-            <div id="firstMissionGuide" class="start-mission-guide" style="display: none;">
-                Hold = in, release = out. Survive 24s to reach Pilot.
-            </div>
 
             <div class="planet-preview">
                 <div class="planet-dot current"></div>
@@ -955,7 +978,7 @@
         <button class="btn" id="victoryRestart">PLAY AGAIN</button>
     </div>
 
-    <div id="tutorial">HOLD: Move In • RELEASE: Move Out</div>
+    <div id="tutorial">🖐️ Hold anywhere to move IN<br>Lift finger to move OUT. Avoid debris.</div>
 
     <script>
         // Core elements
@@ -1006,6 +1029,7 @@
         const nameInputWrapEl = document.getElementById('nameInputWrap');
         const playerNameInputEl = document.getElementById('playerNameInput');
         const nameRequirementLineEl = document.getElementById('nameRequirementLine');
+        const quickStartHintEl = document.getElementById('quickStartHint');
         const firstMissionGuideEl = document.getElementById('firstMissionGuide');
         const playerCalloutEl = document.getElementById('playerCallout');
         const startBtnEl = document.getElementById('startBtn');
@@ -2055,8 +2079,14 @@
                     : 'Required to start.';
                 nameRequirementLineEl.style.color = hasName ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.72)';
             }
+            if (quickStartHintEl) {
+                quickStartHintEl.textContent = 'How to play: Hold anywhere = move in. Release = move out.';
+            }
             if (firstMissionGuideEl) {
-                firstMissionGuideEl.style.display = playerProgress.totalRuns === 0 ? 'block' : 'none';
+                firstMissionGuideEl.style.display = 'block';
+                firstMissionGuideEl.textContent = playerProgress.totalRuns === 0
+                    ? 'First run goal: survive 24s to reach Pilot.'
+                    : 'Goal: survive longer and beat your best time.';
             }
             if (paceHintLineEl) {
                 const label = paceKey === 'easy' ? 'Easy' : (paceKey === 'hard' ? 'Hard' : 'Medium');
@@ -2521,7 +2551,7 @@
             hiddenAt = 0;
             gameState = 'playing';
             if (startScreen) startScreen.style.display = 'none';
-            if (tutorialEl) tutorialEl.style.display = 'block';
+            if (tutorialEl) tutorialEl.style.display = (playerProgress && playerProgress.totalRuns < 3) ? 'block' : 'none';
             startTime = Date.now();
             nextSpawnTime = Date.now() + 1500;
             fullReset();
@@ -2717,7 +2747,7 @@
             hiddenAt = 0;
             if (gameOverScreen) gameOverScreen.style.display = 'none';
             if (victoryScreen) victoryScreen.style.display = 'none';
-            if (tutorialEl) tutorialEl.style.display = 'block';
+            if (tutorialEl) tutorialEl.style.display = (playerProgress && playerProgress.totalRuns < 3) ? 'block' : 'none';
             fullReset();
             startTime = Date.now();
             nextSpawnTime = Date.now() + 1500;
